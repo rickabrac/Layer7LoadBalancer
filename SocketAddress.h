@@ -27,11 +27,9 @@ using namespace std;
 class SocketAddress
 {
 	public:
-
 		SocketAddress( const char *addrStr );
 
 	private:
-
 		struct sockaddr_in sockaddr_in;
 		void debug( void );
 		string hostname;

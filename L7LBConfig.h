@@ -20,7 +20,6 @@
 class SessionConfig
 {
 	public:
-
 		SessionConfig( const char *destStr, bool secure )
 		{
 			this->destStr = destStr;
@@ -28,7 +27,6 @@ class SessionConfig
 		}
 
 	private:
-
 		const char *destStr;
 		bool secure;
 
@@ -38,7 +36,6 @@ class SessionConfig
 class ServiceConfig
 {
 	public:
-
 		ServiceConfig(
 			string listenStr,
 			string certPath,
@@ -71,7 +68,6 @@ class ServiceConfig
 class L7LBConfig
 {
 	public:
-
 		L7LBConfig( const char *fileName )
 		{
 			this->configFile = new ifstream( fileName );
@@ -205,7 +201,6 @@ class L7LBConfig
 		static L7LBConfig *config;
 
 	private:
-
 		ifstream *configFile;
 		string line = ""; 
 		string token = "";
