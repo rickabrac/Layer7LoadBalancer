@@ -26,7 +26,7 @@ SOURCES  = SocketAddress.cc Connection.cc Service.cc Session.cc ProxySession.cc
 
 OBJECTS  = $(SOURCES:.cc=.o)
 
-HEADERS  = $(SOURCES:.cc=.h) Thread.h Event.h Log.h Exception.h
+HEADERS  = $(SOURCES:.cc=.h) Thread.h Event.h Log.h Exception.h L7LBConfig.h
 
 all: testtls testtcp l7lb 
 
@@ -38,7 +38,7 @@ testtls: $(OBJECTS) TestTLS.cc
 testtcp: $(OBJECTS) TestTCP.cc
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto TestTCP.cc -o testtcp
 
-l7lb: $(OBJECTS) L7LB.cc L7LBConfig.cc
+l7lb: $(OBJECTS) L7LB.cc
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto L7LB.cc -o l7lb 
 
 clean:

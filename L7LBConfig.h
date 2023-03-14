@@ -15,6 +15,9 @@
 //  limitations under the License.
 //
 
+# ifndef _L7LBConfig_h_
+# define _L7LBConfig_h_
+
 class SessionConfig
 {
 	public:
@@ -210,3 +213,4 @@ class L7LBConfig
 		stringstream *ss = nullptr;
 };
 
+# endif // _L7LBConfig_h_

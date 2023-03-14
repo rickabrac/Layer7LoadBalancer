@@ -33,7 +33,7 @@
 # include <iostream>
 # include <fstream>
 # include <string>
-# include "L7LBConfig.cc"
+# include "L7LBConfig.h"
 
 using namespace std;
 
