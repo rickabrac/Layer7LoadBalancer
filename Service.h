@@ -51,7 +51,7 @@ class Service : public Thread
 
 		Service( ServiceContext *context );
 		~Service();
-		ssize_t peek( int clientSocket, SSL *clientSSL, void *buf, size_t len );
+		ssize_t clientPeek( int clientSocket, SSL *clientSSL, void *buf, size_t len );
 
 	protected:
 

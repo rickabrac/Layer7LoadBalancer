@@ -179,15 +179,17 @@ void Service :: _main( ServiceContext *context )
 						ERR_error_string( ERR_get_error(), NULL ) ); 
 				}
 
-				int SSL_accepted = 0;
-				if( (SSL_accepted = SSL_accept( clientSSL )) < 0 ) 
+				int result = 0;
+
+				if( (result = SSL_accept( clientSSL )) < 0 ) 
 				{
 					Exception::raise( "SSL_accept() failed (%s) [%d]",
-						ERR_error_string( ERR_get_error(), NULL ), SSL_accepted ); 
+						ERR_error_string( ERR_get_error(), NULL ), result); 
 				}
-				if( SSL_accepted == 0 )
+
+				if( result == 0 )
 				{
-					Exception::raise( "SSL_accepted == 0" );
+					Exception::raise( "SSL_accept() failed" );
 					return;
 				}
 			}
@@ -211,7 +213,7 @@ void Service :: _main( ServiceContext *context )
 }
 
 ssize_t
-Service :: peek( int clientSocket, SSL *clientSSL, void *buf, size_t len )
+Service :: clientPeek( int clientSocket, SSL *clientSSL, void *buf, size_t len )
 {
 	if( clientSSL ) 
 		return( SSL_peek( clientSSL, buf, (int) len ) );

@@ -73,7 +73,7 @@ class L7LBService : public Service
 		{
 			char buf[ 1024 ];
 			bzero( buf, sizeof( buf ) );
-			int peeked = context->service->peek( clientSocket, clientSSL, buf, sizeof( buf ) );
+			int peeked = context->service->clientPeek( clientSocket, clientSSL, buf, sizeof( buf ) );
 			buf[ peeked ] = '\0';
 # if TRACE
 			Log::log( "PEEK=[\n%s]", buf );
