@@ -17,10 +17,8 @@
 //  limitations under the License.
 //
 
-
-# define DEBUG 1
-
-# define TRACE	1
+# define DEBUG    1
+# define TRACE    1
 
 # include "Service.h"
 # include "Session.h"
@@ -33,6 +31,9 @@
 # include <iostream>
 # include <fstream>
 # include <string>
+
+# define _L7LBConfig_h_    1
+
 # include "L7LBConfig.h"
 
 using namespace std;
