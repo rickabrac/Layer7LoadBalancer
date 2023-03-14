@@ -97,7 +97,7 @@ class L7LBConfig
 				(void) getline( *ss, token, ' ' );
 			}
 			size_t start = token.find_first_not_of( " \t" );
-    		token = (start == std::string::npos) ? "" : token.substr( start );
+			token = (start == std::string::npos) ? "" : token.substr( start );
 			return( new string( token.c_str() ) );
 		}
 

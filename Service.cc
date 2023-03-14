@@ -82,8 +82,8 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 		if( context->socket == -1 )
 			Exception::raise( "socket() failed: %s", strerror( errno ) );
 
-        if( fcntl( context->socket, F_SETFD, 1 ) == -1 )
-            Exception::raise( "fcntl( F_SETFD, 1 ) failed", strerror( errno ) );
+		if( fcntl( context->socket, F_SETFD, 1 ) == -1 )
+			Exception::raise( "fcntl( F_SETFD, 1 ) failed", strerror( errno ) );
 
 		// set SO_REUSEADDR so bind() doesn't fail after restart
 		int optval = 1;
@@ -146,9 +146,9 @@ void Service :: _main( ServiceContext *context )
 			Log::log( "Service::_main: accept() (clientSocket=%d)", clientSocket );
 # endif // TRACE
 
-           	struct pollfd server_poll;
-           	server_poll.fd = context->socket;
-           	server_poll.events = POLLIN;
+			struct pollfd server_poll;
+			server_poll.fd = context->socket;
+			server_poll.events = POLLIN;
 
 			SSL *clientSSL = nullptr;
 

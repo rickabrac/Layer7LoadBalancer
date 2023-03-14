@@ -41,7 +41,7 @@ class ProxyService : public Service
 
 		ProxyService( ServiceContext *context ) : Service( context ) { }
 
-        ThreadMain main( void ) { return( (ThreadMain) _main ); }
+		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 	protected:
 
@@ -177,7 +177,7 @@ class EchoService : public Service
 
 		EchoService( EchoServiceContext *context ) : Service( context ) { }
 
-        ThreadMain main( void ) { return( (ThreadMain) _main ); }
+		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 	protected:
 
@@ -192,17 +192,16 @@ class TestSession;
 
 class TestSessionContext : public ThreadContext 
 {
-    public:
+	public:
 
-        TestSessionContext( int numEchos )
-        {
-            this->numEchos = numEchos;
-        }
+		TestSessionContext( int numEchos )
+	{
+		this->numEchos = numEchos;
+	}
 
-        TestSession *session;
-        int numEchos;
+	TestSession *session;
+	int numEchos;
 };
-
 
 class TestSession : public Thread 
 {
@@ -221,7 +220,7 @@ class TestSession : public Thread
 			delete( context );
 		}
 
-        ThreadMain main( void ) { return( (ThreadMain) _main ); }
+		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 		static void _main( TestSessionContext *context )
 		{

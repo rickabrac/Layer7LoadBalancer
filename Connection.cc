@@ -217,7 +217,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 			(void) close( socket );
 			Connection::connectionMutex.unlock();
 			Exception::raise( "Connection::Connection( %s ) SSL_connect() failed (%s) [%d]",
-		    	destStr, SSL_connected == -1 ? "out of resource?" : SSL_error(), SSL_connected );
+				destStr, SSL_connected == -1 ? "out of resource?" : SSL_error(), SSL_connected );
 		}
 	}
 

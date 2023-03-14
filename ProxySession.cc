@@ -24,7 +24,7 @@ ProxySessionContext :: ProxySessionContext( Service *service, int clientSocket, 
 	this->destStr = destStr;
 	this->useTLS = useTLS;
 	this->bufLen = service->bufLen;
-    this->buf = (char *) malloc( service->bufLen );
+	this->buf = (char *) malloc( service->bufLen );
 }
 
 ProxySessionContext :: ~ProxySessionContext()
@@ -58,16 +58,16 @@ ProxySession :: _main ( ProxySessionContext *context )
 # if TRACE
 	Log::log( "ProxySession::_main( %p ) RUN", context );
 # endif // TRACE
-    try
-    {
-        context->proxy = new Connection( context->destStr, context->useTLS );
-    }
-    catch( const char *error )
-    {
-        Log::log( "ProxySession[ %p ]::_main: Connection() failed", context );
+	try
+	{
+		context->proxy = new Connection( context->destStr, context->useTLS );
+	}
+	catch( const char *error )
+	{
+		Log::log( "ProxySession[ %p ]::_main: Connection() failed", context );
 		delete( context );
 		return;
-    }
+	}
 
 	ssize_t pending = 0;
 	int loops = 0;
@@ -190,8 +190,8 @@ ProxySession :: _main ( ProxySessionContext *context )
 						}
 						else
 						{
-                            Log::log( "ProxySession[ %p ]::_main: recv() failed [%d] (%s)",
-                                context, errno, ERR_error_string( ERR_get_error(), NULL ) );
+							Log::log( "ProxySession[ %p ]::_main: recv() failed [%d] (%s)",
+								context, errno, ERR_error_string( ERR_get_error(), NULL ) );
 						}
 # endif // TRACE
 						delete( context );
