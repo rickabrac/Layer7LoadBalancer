@@ -17,7 +17,8 @@
 //  limitations under the License.
 //
 
-# define DEBUG    1
+// # define DEBUG    1
+
 # define TRACE    1
 
 # include "Service.h"
@@ -33,17 +34,22 @@
 # include <string>
 
 # define _L7LBConfig_h_    1
-
 # include "L7LBConfig.h"
 
 using namespace std;
+
+# if DEBUG 
+L7LBConfig *L7LBConfig :: config = new L7LBConfig( "debug.conf" );
+# else // DEBUG
+L7LBConfig *L7LBConfig :: config = new L7LBConfig( "l7lb.conf" );
+# endif // DEBUG
 
 class L7LBServiceContext: public ServiceContext
 {
 	public:
 
-		L7LBServiceContext( ServiceConfig *serviceConfig )
-			: ServiceContext( serviceConfig->listenStr.c_str(), serviceConfig->keyPath.c_str(), serviceConfig->certPath.c_str() )
+		L7LBServiceContext( ServiceConfig *serviceConfig ) :
+			ServiceContext( serviceConfig->listenStr.c_str(), serviceConfig->keyPath.c_str(), serviceConfig->certPath.c_str() )
 		{
 			this->sessionConfigs = serviceConfig->sessionConfigs;
 		}
@@ -89,12 +95,6 @@ class L7LBService : public Service
 			return( new ProxySession( context ) );
 		}
 };
-
-# if DEBUG
-L7LBConfig *L7LBConfig :: config = new L7LBConfig( "test.conf" );
-# else // DEBUG
-L7LBConfig *L7LBConfig :: config = new L7LBConfig( "l7lb.conf" );
-# endif // DEBUG
 
 int main( void )
 {
