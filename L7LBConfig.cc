@@ -1,7 +1,7 @@
 //				
-// L7LBConfig.cc
-//
-// Created by Rick Tyler
+//  L7LBConfig.h
+//  Layer7LoadBalancer Configuration
+//  Created by Rick Tyler
 //
 
 class SessionConfig

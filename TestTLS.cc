@@ -1,9 +1,9 @@
 //
 //  TestTLS.cc
+//  L7LB (Layer7LoadBalancer)
+//  Created by Rick Tyler
 //
 //  TLS-mode test for Thread, Service, Connection, Session, ProxySession
-//
-//  Created by Rick Tyler
 //
 
 # include "Service.h"

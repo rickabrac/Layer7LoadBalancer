@@ -1,8 +1,10 @@
 //				
-// L7LB.cc (Layer7LoadBalancer)
+//  L7LB.cc
+//  Layer7LoadBalancer
+//  Created by Rick Tyler
 //
-// Created by Rick Tyler
-//
+
+# define DEBUG 1
 
 # define TRACE	1
 
@@ -73,7 +75,11 @@ class L7LBService : public Service
 		}
 };
 
+# if DEBUG
+L7LBConfig *L7LBConfig :: config = new L7LBConfig( "test.conf" );
+# else // DEBUG
 L7LBConfig *L7LBConfig :: config = new L7LBConfig( "l7lb.conf" );
+# endif // DEBUG
 
 int main( void )
 {

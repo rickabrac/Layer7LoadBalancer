@@ -1,8 +1,6 @@
 //
 //  SocketAddress.h
-//
-//  Wrapper for posix sockaddr_in
-//
+//  L7LB (Layer7LoadBalancer)
 //  Created by Rick Tyler
 //
 

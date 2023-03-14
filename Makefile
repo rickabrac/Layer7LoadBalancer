@@ -1,3 +1,9 @@
+#
+#  Makefile
+#  Makefile for L7LB (Layer7LoadBalancer)
+#  Created by Rick Tyler
+#
+
 SSL_HDR_DIR = /usr/local/include
 SSL_LIB_DIR = /usr/local/lib
 
@@ -27,4 +33,3 @@ l7lb: $(OBJECTS) L7LB.cc L7LBConfig.cc
 clean:
 	rm -f testtls testtcp l7lb *.o
 	rm -rf *.dSYM
-

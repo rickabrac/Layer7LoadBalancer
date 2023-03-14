@@ -1,9 +1,9 @@
 //
 //  TestTCP.cc
+//  L7LB (Layer7LoadBalancer)
+//  Created by Rick Tyler
 //
 //  TCP-mode version of class test for Service, Connection, Session, and Proxand Connection
-//
-//  Created by Rick Tyler
 //
 
 # include "Service.h"
