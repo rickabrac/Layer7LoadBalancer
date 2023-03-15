@@ -28,7 +28,7 @@ class Service;
 class ServiceContext : public ThreadContext
 {
     public:
-        ServiceContext( const char *listenStr, const char *certPath = nullptr, const char *keyPath = nullptr );
+        ServiceContext( const char *listenStr, const char *certPath = nullptr, const char *keyPath = nullptr, const char *trustPath = nullptr );
 		~ServiceContext();
 		Service *service;
 
@@ -38,6 +38,7 @@ class ServiceContext : public ThreadContext
 		static SSL_CTX *ssl_ctx;
 		int socket;
 		const char *certPath;
+		const char *trustPath;
 		const char *keyPath;
 
 	friend class Service;

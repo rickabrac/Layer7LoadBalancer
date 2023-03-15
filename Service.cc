@@ -27,7 +27,7 @@
 
 // # define TRACE    1
 
-ServiceContext :: ServiceContext( const char *listenStr, const char *certPath, const char *keyPath )
+ServiceContext :: ServiceContext( const char *listenStr, const char *certPath, const char *keyPath, const char *trustPath )
 {
 # if TRACE
 	Log::log( "ServiceContext::ServiceContext()" );
@@ -35,6 +35,7 @@ ServiceContext :: ServiceContext( const char *listenStr, const char *certPath, c
 	this->sockAddr = new SocketAddress( listenStr );
 	this->certPath = certPath;
 	this->keyPath = keyPath;
+	this->trustPath = trustPath;
 	this->listenStr = listenStr;
 }
 
@@ -87,7 +88,7 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 					ERR_error_string( ERR_get_error(), NULL ) );
 			}
 
-			if( SSL_CTX_load_verify_locations( ServiceContext::ssl_ctx, NULL, "secure.chowtime.com.cab") <= 0 )
+			if( context->trustPath != nullptr && SSL_CTX_load_verify_locations( ServiceContext::ssl_ctx, NULL, context->trustPath) <= 0 )
 			{
 				Exception::raise( "SSL_CTX_load_verify_locations() failed: %s",
 					ERR_error_string( ERR_get_error(), NULL ) );

@@ -114,7 +114,8 @@ int main( int argc, char **argv )
 # if TRACE
 		cout << "SERVICE: " << serviceConfig->listenStr << endl;
 		cout << "KEY: " << serviceConfig->keyPath	<< endl;
-		cout << "CERTIFICATE: " << serviceConfig->certPath	<< endl;
+		cout << "CERTIFICATE: " << serviceConfig->certPath << endl;
+		cout << "TRUST: " << serviceConfig->trustPath << endl;
 # endif // TRACE
 		try
 		{

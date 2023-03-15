@@ -42,6 +42,7 @@ class ServiceConfig
 			string listenStr,
 			string certPath,
 			string keyPath,
+			string trustPath,
 			vector<string> *sessionCookies,
 			vector<SessionConfig *> *sessionConfigs )
 		{
@@ -50,6 +51,7 @@ class ServiceConfig
 				<< listenStr << "\", \""
 				<< certPath << "\", \""
 				<< keyPath << "\", "
+				<< trustPath << "\", "
 				<< sessionConfigs << ", "
 				<< sessionCookies << endl;
 # endif // TRACE
@@ -57,12 +59,14 @@ class ServiceConfig
 			this->sessionCookies = sessionCookies;
 			this->certPath = certPath;
 			this->keyPath = keyPath;
+			this->trustPath = trustPath;
 			this->sessionConfigs = sessionConfigs;
 		}
 
 		string listenStr;
 		string certPath;
 		string keyPath;
+		string trustPath;
 		vector<string> *sessionCookies;
 		vector<SessionConfig *> *sessionConfigs;	
 };
@@ -139,6 +143,7 @@ class L7LBConfig
 			string *listenStr = nullptr;
 			string *keyPath = nullptr;
 			string *certPath = nullptr;
+			string *trustPath = nullptr;
 			vector<string> *sessionCookies = new vector<string>();
 			if( (protocol = nextToken()) == nullptr )
 				return nullptr;
@@ -150,8 +155,6 @@ class L7LBConfig
 			if( (s = nextToken()) == NULL || *s != "{" )
 				Exception::raise( "expected {" );
 			string *name;
-			keyPath = nullptr;
-			certPath = nullptr;
 			vector<SessionConfig *> *sessionConfigs = new vector<SessionConfig *>();
 			while( (name = nextToken()) != nullptr ) 
 			{
@@ -165,10 +168,12 @@ class L7LBConfig
 # if TRACE
 				cout << "protocol=" << *protocol << " name=" << *name << " value=" << *value << endl;
 # endif // TRACE
-				if( *name == "KEY" )
-					keyPath = value;
-				else if( *name == "CERTIFICATE" )
+				if( *name == "CERTIFICATE" )
 					certPath = value;
+				else if( *name == "KEY" )
+					keyPath = value;
+				else if( *name == "TRUST" )
+					trustPath = value;
 				else if( *name == "SESSION-COOKIE" )
 				{
 					sessionCookies->push_back( *value );
@@ -187,12 +192,14 @@ class L7LBConfig
 			{
 				cout << "KEYPATH=" << *keyPath << endl;
 				cout << "CERTPATH=" << *certPath << endl;
+				cout << "TRUSTPATH=" << (trustPath == nullptr ? "?" : *trustPath) << endl;
 			}
 # endif // TRACE
 			return new ServiceConfig(
 				*listenStr,
 				keyPath == nullptr ? "" : *keyPath,
 				certPath == nullptr ? "" : *certPath,
+				trustPath == nullptr ? "" : *trustPath,
 				sessionCookies,
 				sessionConfigs
 			);
