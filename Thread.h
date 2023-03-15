@@ -21,13 +21,13 @@
 # include <thread>
 # include <unistd.h>
 # include <sstream>
+#include <chrono>
 
 using namespace std;
 
 class ThreadContext
 {
 	public:
-
 		ThreadContext( void ) { }
 };
 
@@ -36,7 +36,6 @@ typedef void (*ThreadMain)( ThreadContext * );
 class Thread
 {
 	public:
-
 		Thread( ThreadContext *context )
 		{
 			this->context = context;
@@ -64,6 +63,12 @@ class Thread
 			t->detach();
 		}
 
+		void sleep( int millliseconds )
+		{
+			std::chrono::duration<int64_t, std::ratio<1,1000>> duration( millliseconds );
+			std::this_thread::sleep_for( duration );
+		}
+
 		static string tid()
 		{
 			std::ostringstream ss;
@@ -74,7 +79,6 @@ class Thread
 		ThreadContext *context;
 
 	private:
-
 		thread *t;
 };
 

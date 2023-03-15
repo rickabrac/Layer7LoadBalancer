@@ -25,7 +25,6 @@ using namespace std;
 class Event
 {
 	public:
-
 		Event( void )
 		{
 			_mutex.lock();
@@ -47,7 +46,6 @@ class Event
 		}
 
 	private:
-
 		mutex _mutex;
 };
 

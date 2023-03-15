@@ -89,7 +89,7 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 			// address string must contain only port number 
 			if( !*c || !isdigit( *addrBuf ) )
 			{
-				Exception::raise( "SocketAddress::SocketAddress( '%s' ) port number not specified",
+				Exception::raise( "SocketAddress::SocketAddress( '%s' ) listenStr is invalid",
 					addrStr ); 
 			}
 			in_addr.s_addr = htonl( INADDR_ANY ); 

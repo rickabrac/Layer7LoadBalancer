@@ -14,7 +14,6 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //
-### THIS TEST IS CURRENTLY BROKEN ###
 //
 //  TLS-mode test for Service, Connection, Session, and ProxySession.
 //
@@ -26,7 +25,7 @@
 # include "Event.h"
 # include "Log.h"
 
-# define TRACE    1
+// # define TRACE    1
 
 using namespace std;
 
@@ -240,6 +239,7 @@ class TestSession : public Thread
 			Connection *connection = NULL;
 			try
 			{
+				context->session->sleep( rand() % 1000 );
 # if TRACE
 				Log::log( "TestSession::main( %p ) RUN", context );
 # endif // TRACE
@@ -250,6 +250,7 @@ class TestSession : public Thread
 				TestSession::sessionMutex.unlock();
 				for( i = 0; i < context->numEchos; i++ )
 				{
+					context->session->sleep( rand() % 250 );
 					char outBuf[ 128 ];
 					sprintf( outBuf, "TEST#%d", i );
 					connection->write( outBuf, strlen( outBuf ) + 1 );

@@ -89,8 +89,16 @@ ProxySession :: _main ( ProxySessionContext *context )
 		fd_set empty_fdset;
 		struct timeval timeout;
 		bzero( &timeout, sizeof( timeout ) );
-		timeout.tv_sec = 1; 
-		timeout.tv_usec = 0;
+		if( context->useTLS )
+		{
+			timeout.tv_sec = 1; 
+			timeout.tv_usec = 0;
+		}
+		else
+		{
+			timeout.tv_sec = 0; 
+			timeout.tv_usec = 100000;
+		}
 		int selected;
 
 		FD_ZERO( &fdset );
@@ -100,21 +108,10 @@ ProxySession :: _main ( ProxySessionContext *context )
 		try
 		{
 			if( pending )
-				Exception::raise( "pending != 0" ); 
-
-			if( loops == 0 )
-			{
-				timeout.tv_sec = 0;
-				timeout.tv_usec = 10000;
-			}
-			else
-			{
-				timeout.tv_sec = 0;
-				timeout.tv_usec = 10000;
-			}
+				Exception::raise( "pending != 0" );
 # if TRACE
-			Log::log( "ProxySession[ %p ]::_main: select( %d, %d )...",
-				context, context->clientSocket, context->proxy->socket );
+//			Log::log( "ProxySession[ %p ]::_main: select( %d, %d )...",
+//				context, context->clientSocket, context->proxy->socket );
 # endif // TRACE
 			if( (selected = select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout )) >= 0 )
 			{
@@ -145,6 +142,8 @@ ProxySession :: _main ( ProxySessionContext *context )
 						++loopReads;
 						ssize_t sent, total = 0;
 						size_t recvLen = len;
+// context->buf[ len// ] = '\0';
+// Log::log( "SENDING %d BYTES [\n%s]", len, context->buf );
 						while( len
 							&& (sent = context->proxy->write( ((char *) context->buf) + total, len )) <= len )
 						{
@@ -187,6 +186,9 @@ ProxySession :: _main ( ProxySessionContext *context )
 							context->service->bufLenMutex.unlock();
 							free( context->buf );
 							context->buf = (char *) malloc( context->bufLen );
+# if TRACE
+							Log::log( "ProxySession[ %p ]::_main: BUFLEN=%d", context, context->service->bufLen ); 
+# endif // TRACE
 						}
 						else
 							context->service->bufLenMutex.unlock();
@@ -208,16 +210,16 @@ ProxySession :: _main ( ProxySessionContext *context )
 						delete( context );
 						return;
 					}
-					else if( len == 0 )
-					{
-						if( context->clientSSL )
-							(void) SSL_write( context->clientSSL, (void *) "", 0 ); 
-						else
-							(void) send( context->clientSocket, (void *) "", 0, 0 );
-# if TRACE
-						Log::log( "ProxySession[ %p ]::_main: WROTE NOTHING TO CLIENT", context );
-# endif // TRACE
-					}
+// 					else if( len == 0 )
+// 					{
+// 						if( context->clientSSL )
+// 							(void) SSL_write( context->clientSSL, (void *) "", 0 ); 
+// 						else
+// 							(void) send( context->clientSocket, (void *) "", 0, 0 );
+// # if TRACE
+// 						Log::log( "ProxySession[ %p ]::_main: WROTE NOTHING TO CLIENT", context );
+// # endif // TRACE
+// 					}
 				}
 
 				if( FD_ISSET( context->proxy->socket, &fdset ) || context->proxy->pending() ) 
@@ -227,9 +229,10 @@ ProxySession :: _main ( ProxySessionContext *context )
 					// receive from server
 					if( (pending = context->proxy->read( context->buf, context->bufLen )) > 0 )
 					{
+//						Log::log( "ProxySession[ %p ]::_main: RECEIVED %d BYTES FROM SERVER", context, pending );
 # if TRACE
-						Log::log( "ProxySession[ %p ]::_main: RECV FROM SERVER [%s]",
-							context, context->buf );
+//						Log::log( "ProxySession[ %p ]::_main: RECEIVED FROM SERVER [%s]",
+//							context, context->buf );
 # endif // TRACE
 						++loopReads;
 						ssize_t sent;
@@ -244,6 +247,7 @@ ProxySession :: _main ( ProxySessionContext *context )
 							// send to client
 							if( sent < 0 )
 							{
+								Log::log( "SENT=%d PENDING=%d", sent, pending );
 								if( context->clientSSL )
 								{
 									Log::log( "ProxySession[ %p ]::_main SSL_write() failed [%d] (%s)",
@@ -263,8 +267,8 @@ ProxySession :: _main ( ProxySessionContext *context )
 							total += sent;
 						}
 # if TRACE
-						Log::log( "ProxySession[ %p ]::_main: SEND TO CLIENT [\n%s]",
-							context, context->buf );
+//						Log::log( "ProxySession[ %p ]::_main: SEND TO CLIENT [\n%s]",
+//							context, context->buf );
 # endif // TRACE
 						if( recvLen == context->bufLen )
 						{
@@ -274,6 +278,9 @@ ProxySession :: _main ( ProxySessionContext *context )
 							context->service->bufLenMutex.unlock();
 							free( context->buf );
 							context->buf = (char *) malloc( context->bufLen );
+# if TRACE
+							Log::log( "ProxySession[ %p ]::_main: BUFLEN=%d", context, context->service->bufLen ); 
+# endif // TRACE
 						}
 					}
 					else if( errno != EAGAIN && pending <= 0 )

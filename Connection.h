@@ -27,7 +27,6 @@ using namespace std;
 class Connection 
 {
 	public:
-
 		Connection( const char *destStr, bool secure = true ); 
 		~Connection();
 		ssize_t write( void *data, size_t len );
@@ -39,7 +38,6 @@ class Connection
 		int socket;
 
 	private:
-
 		SSL *ssl = nullptr;
 		static map< string, Connection * > connections;
 		static mutex connectionMutex;

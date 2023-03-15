@@ -111,7 +111,6 @@ Connection :: Connection ( const char *destStr, bool secure )
 			Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
 				destStr, strerror( errno ) );
 		}
-
 		flags |= O_NONBLOCK; 
 		if( fcntl( socket, F_SETFL, flags ) < 0 )
 		{ 
@@ -185,26 +184,22 @@ Connection :: Connection ( const char *destStr, bool secure )
 			} 
 		}
 
-		if( (flags = fcntl( socket, F_GETFL, NULL) ) < 0 )
-		{ 
-			Log::log( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
-				destStr, strerror( errno ) );
-			close( socket );
-			continue;
-		}
-
-		flags ^= O_NONBLOCK; 
-		if( fcntl( socket, F_SETFL, flags ) < 0 )
-		{ 
-			Log::log( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n", destStr, strerror( errno ) );
-			close( socket );
-			continue;
-		} 
-
-		break;
+	 	break;
 	}
 
-	SSL *ssl;
+	// reset socket to synchonous 
+
+	int flags;
+	if( (flags = fcntl( socket, F_GETFL, NULL) ) < 0 )
+	{ 
+		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
+			destStr, strerror( errno ) );
+	}
+	flags &= ~O_NONBLOCK; 
+	if( fcntl( socket, F_SETFL, flags ) < 0 )
+	{ 
+		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n", destStr, strerror( errno ) );
+	} 
 
 	if( secure )
 	{
@@ -270,7 +265,9 @@ ssize_t
 Connection :: write( void *data, size_t len )
 {
 	if( secure )
+	{
 		return( SSL_write( ssl, data, (int) len ) );
+	}
 	return( send( socket, data, len, 0 ) );
 } 
 

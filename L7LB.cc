@@ -17,8 +17,6 @@
 //  limitations under the License.
 //
 
-// # define DEBUG    1
-
 # define TRACE    1
 
 # include "Service.h"
@@ -38,11 +36,7 @@
 
 using namespace std;
 
-# if DEBUG 
-L7LBConfig *L7LBConfig :: config = new L7LBConfig( "debug.conf" );
-# else // DEBUG
-L7LBConfig *L7LBConfig :: config = new L7LBConfig( "l7lb.conf" );
-# endif // DEBUG
+L7LBConfig *L7LBConfig :: config = nullptr;
 
 class L7LBServiceContext: public ServiceContext
 {
@@ -78,13 +72,13 @@ class L7LBService : public Service
 
 		Session *getSession( int clientSocket, SSL *clientSSL )
 		{
-			char buf[ 1024 ];
-			bzero( buf, sizeof( buf ) );
-			int peeked = context->service->clientPeek( clientSocket, clientSSL, buf, sizeof( buf ) );
-			buf[ peeked ] = '\0';
-# if TRACE
-			Log::log( "PEEK=[\n%s]", buf );
-# endif // TRACE
+// 			char buf[ 1024 ];
+// 			bzero( buf, sizeof( buf ) );
+// 			int peeked = context->service->clientPeek( clientSocket, clientSSL, buf, sizeof( buf ) );
+// 			buf[ peeked ] = '\0';
+// # if TRACE
+// 			Log::log( "PEEK=[\n%s]", buf );
+// # endif // TRACE
 			L7LBServiceContext *_context = (L7LBServiceContext *) context;
 			vector<SessionConfig *> sessionConfigs = *_context->sessionConfigs;
 			int sessionIndex = 0;	// use first session configuration if multiple specified for now
@@ -96,9 +90,23 @@ class L7LBService : public Service
 		}
 };
 
-int main( void )
+int main( int argc, char **argv )
 {
-	L7LBConfig::config->parseFile();
+	if( argc != 2 )
+	{
+		cout << "Usage: " << argv[ 0 ] << " config_file_path" << endl;	
+		::exit( -1 );
+	}
+	L7LBConfig::config = new L7LBConfig( argv[ 1 ] );
+	try
+	{
+		L7LBConfig::config->parseFile(); 
+	}
+	catch( const char *error )
+	{
+		Log::log( "%s", error );
+		::exit( -1 );
+	}
 	Event done;
 	for( auto it = L7LBConfig::config->serviceConfigs.begin(); it != L7LBConfig::config->serviceConfigs.end(); it++ )
 	{

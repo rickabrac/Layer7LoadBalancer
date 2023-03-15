@@ -26,12 +26,10 @@
 class ProxySessionContext : public SessionContext
 {
 	public:
-
 		ProxySessionContext( Service *service, int clientSocket, SSL *clientSSL, const char *destStr, bool useTLS );
 		~ProxySessionContext();
 
 	private:
-
 		char *buf;
 		size_t bufLen;
 		const char *destStr;
@@ -44,17 +42,13 @@ class ProxySessionContext : public SessionContext
 class ProxySession : public Session 
 {
 	public:
-
 		ProxySession( ProxySessionContext *context );
 		virtual ~ProxySession();
 		void stop( void );
 
-	protected:
-
 	private:
-
-        static void _main( ProxySessionContext *context );
-        ThreadMain main( void ) { return( (ThreadMain) _main ); }
+		static void _main( ProxySessionContext *context );
+		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 		ProxySessionContext *context;
 
 	friend class Service; 

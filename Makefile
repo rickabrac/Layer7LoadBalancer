@@ -19,8 +19,7 @@ SSL_HDR_DIR = /usr/local/include
 SSL_LIB_DIR = /usr/local/lib
 
 CXX         = g++
-CXXFLAGS    = -g -pthread -O3 -fPIC -Wuninitialized -Wall -Wextra -I$(SSL_HDR_DIR) -std=c++1z -Wno-c++11-extensions
-# CXXFLAGS    = -g -pthread -O3 -fPIC -Wuninitialized -Wall -Wextra -I$(SSL_HDR_DIR) -std=c++14 -Wno-c++11-extensions
+CXXFLAGS    = -g -fPIC -Wuninitialized -Wall -Wextra -I$(SSL_HDR_DIR) -I. -std=c++1z # -Wno-c++11-extensions
 
 SOURCES  = SocketAddress.cc Connection.cc Service.cc Session.cc ProxySession.cc
 
@@ -28,7 +27,7 @@ OBJECTS  = $(SOURCES:.cc=.o)
 
 HEADERS  = $(SOURCES:.cc=.h) Thread.h Event.h Log.h Exception.h L7LBConfig.h
 
-all: testtls testtcp l7lb 
+all: l7lb testtls testtcp
 
 $(OBJECTS): $(HEADERS)
 

@@ -14,7 +14,6 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //
-### THIS TEST IS CURRENTLY BROKEN ###
 //
 //  TCP-mode test for Service, Connection, Session, and ProxySession.
 //
@@ -33,7 +32,6 @@ using namespace std;
 class ProxyServiceContext : public ServiceContext 
 {
 	public:
-
 		ProxyServiceContext( const char *listenStr, const char *destStr ) :
 			ServiceContext( listenStr )
 		{
@@ -41,20 +39,17 @@ class ProxyServiceContext : public ServiceContext
 		}
 
 	private:
-
 		const char *destStr;
 };
 
 class ProxyService : public Service 
 {
 	public:
-
 		ProxyService( ServiceContext *context ) : Service( context ) { }
 
 		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 	protected:
-
 		ProxySession *getSession( int clientSocket, SSL *clientSSL = NULL )
 		{
 			ProxySessionContext *context = new ProxySessionContext( this, clientSocket, clientSSL, "localhost:667", false );
@@ -65,12 +60,10 @@ class ProxyService : public Service
 class EchoSessionContext : public SessionContext 
 {
 	public:
-
 		EchoSessionContext( Service *service, int clientSocket, SSL *clientSSL )
 			: SessionContext( service, clientSocket, clientSSL ) { }
 
 	private:
-
 		char buf[ 1024 ];
 		int len;
 
@@ -80,7 +73,6 @@ class EchoSessionContext : public SessionContext
 class EchoSession : public Session
 {
 	public:
-
 		EchoSession( EchoSessionContext *context ) : Session( context ) { }
 
 		ThreadMain main( void ) { return( (ThreadMain) _main ); }
@@ -90,6 +82,8 @@ class EchoSession : public Session
 # if TRACE
 			Log::log( "EchoSession::main( %p ) RUN", context );
 # endif // TRACE
+			context->session->sleep( rand() % 1000 );
+
 			try
 			{
 				fd_set fdset;
@@ -101,7 +95,7 @@ class EchoSession : public Session
 				int selected;
 				context->len = 0;
 				
-				(void) send( context->clientSocket, "", 0, 0 ); 
+//				(void) send( context->clientSocket, "", 0, 0 ); 
 
 				for( ;; )
 				{
@@ -176,24 +170,20 @@ class EchoSession : public Session
 class EchoServiceContext : public ServiceContext
 {
 	public:
-
 		EchoServiceContext( const char *listenStr ) : ServiceContext( listenStr ) { }
 
 	protected:
-
 		const char *destStr;
 };
 
 class EchoService : public Service
 {
 	public:
-
 		EchoService( EchoServiceContext *context ) : Service( context ) { }
 
 		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 	protected:
-
 		EchoSession *getSession( int clientSocket, SSL *clientSSL )
 		{
 # if TRACE
@@ -209,7 +199,6 @@ class TestSession;
 class TestSessionContext : public ThreadContext 
 {
 	public:
-
 		TestSessionContext( int numEchos )
 		{
 			this->numEchos = numEchos;
@@ -222,7 +211,6 @@ class TestSessionContext : public ThreadContext
 class TestSession : public Thread 
 {
 	public:
-
 		TestSession( TestSessionContext *context ) : Thread( context )
 		{
 			context->session = this;
@@ -251,6 +239,7 @@ class TestSession : public Thread
 				TestSession::sessionMutex.unlock();
 				for( i = 0; i < context->numEchos; i++ )
 				{
+					context->session->sleep( rand() % 250 );
 					char outBuf[ 128 ];
 					sprintf( outBuf, "TEST<%p>#%d", context, i );
 					connection->write( outBuf, strlen( outBuf ) + 1 );

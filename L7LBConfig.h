@@ -15,6 +15,8 @@
 //  limitations under the License.
 //
 
+# include "Log.h"
+
 # ifdef _L7LBConfig_h_
 
 class SessionConfig
@@ -68,9 +70,10 @@ class ServiceConfig
 class L7LBConfig
 {
 	public:
-		L7LBConfig( const char *fileName )
+		L7LBConfig( const char *filePath )
 		{
-			this->configFile = new ifstream( fileName );
+			this->filePath = filePath;
+			this->configFile = new ifstream( filePath );
 		}
 
 		string *nextToken( void )
@@ -114,8 +117,7 @@ class L7LBConfig
 		{
 			if( !configFile->is_open())
 			{
-				Exception::raise( "configFile.is_open() == false" );
-				return;
+				Exception::raise( "%s not found", filePath );
 			}
 			ServiceConfig *serviceConfig;
 			try
@@ -125,10 +127,9 @@ class L7LBConfig
 					serviceConfigs.push_back( serviceConfig );
 				}
 			}
-			catch( const char *msg )
+			catch( const char *error )
 			{
-				cout << "L7LBConfig::parseFile: " << msg << endl;
-				::exit( -1 );
+				Exception::raise( "L7LBConfig::parseFile: %s", error ); 
 			}
 		}
 
@@ -175,7 +176,7 @@ class L7LBConfig
 				else if( *name == "TCP" || *name == "TLS" )
 				{
 					const char *destStr = value->c_str();
-					bool secure = strcmp( value->c_str(), "TLS" ) == 0 ? true : false;
+					bool secure = strcmp( name->c_str(), "TLS" ) == 0 ? true : false;
 					sessionConfigs->push_back( new SessionConfig( destStr, secure ) );
 				}
 			}
@@ -201,6 +202,7 @@ class L7LBConfig
 		static L7LBConfig *config;
 
 	private:
+		const char *filePath;
 		ifstream *configFile;
 		string line = ""; 
 		string token = "";

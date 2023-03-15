@@ -27,12 +27,10 @@ class Session;
 class SessionContext : public ThreadContext
 {
 	public:
-
         SessionContext( Service *daemon, int clientSocket, SSL *clientSSL = NULL );
 		~SessionContext();
 
 	protected:
-
         Service *service;
 		Session *session;
 		int clientSocket;

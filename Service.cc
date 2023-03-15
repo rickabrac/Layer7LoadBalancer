@@ -48,7 +48,7 @@ ServiceContext :: ~ServiceContext()
 }
 
 SSL_CTX *ServiceContext :: ssl_ctx = NULL;
-size_t Service :: bufLen = 262144;
+size_t Service :: bufLen = 32768;
 mutex Service :: bufLenMutex;
 
 Service :: Service( ServiceContext *context ) : Thread( context )
@@ -84,6 +84,12 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 			if( SSL_CTX_use_PrivateKey_file( ServiceContext::ssl_ctx, context->keyPath, SSL_FILETYPE_PEM ) != 1 )
 			{
 				Exception::raise( "SSL_CTX_use_PrivateKey_file() failed: %s",
+					ERR_error_string( ERR_get_error(), NULL ) );
+			}
+
+			if( SSL_CTX_load_verify_locations( ServiceContext::ssl_ctx, NULL, "secure.chowtime.com.cab") <= 0 )
+			{
+				Exception::raise( "SSL_CTX_load_verify_locations() failed: %s",
 					ERR_error_string( ERR_get_error(), NULL ) );
 			}
 		}
@@ -131,7 +137,7 @@ Service :: ~Service()
 
 bool Service :: isSecure()
 {
-	return( *context->certPath && *context->keyPath );
+	return( context->certPath && *context->certPath && context->keyPath && *context->keyPath );
 }
 
 void Service :: _main( ServiceContext *context )
@@ -180,7 +186,6 @@ void Service :: _main( ServiceContext *context )
 				}
 
 				int result = 0;
-
 				if( (result = SSL_accept( clientSSL )) < 0 ) 
 				{
 					Exception::raise( "SSL_accept() failed (%s) [%d]",

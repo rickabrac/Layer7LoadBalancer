@@ -21,7 +21,6 @@
 class Exception
 {
 	public:
-
 		static void raise( const char *fmt, ... )
 		{
 			va_list args;
