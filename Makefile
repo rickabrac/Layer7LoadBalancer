@@ -1,6 +1,6 @@
 #
 #  Makefile
-#  Makefile for L7LB (Layer7LoadBalancer)
+#  Layer7LoadBalancer
 #  Created by Rick Tyler
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");

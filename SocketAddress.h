@@ -1,6 +1,6 @@
 //
 //  SocketAddress.h
-//  L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,18 +26,20 @@ using namespace std;
 
 class SocketAddress
 {
-	public:
-		SocketAddress( const char *addrStr );
+    public:
 
-	private:
-		struct sockaddr_in sockaddr_in;
-		void debug( void );
-		string hostname;
-		static std::map< std::string, struct in_addr * > hosts;
-		static std::mutex hostMutex;
+	SocketAddress( const char *addrStr );
 
-	friend class Service;
-	friend class Connection;
+    private:
+
+	struct sockaddr_in sockaddr_in;
+	void debug( void );
+	string hostname;
+	static std::map< std::string, struct in_addr * > hosts;
+	static std::mutex hostMutex;
+
+    friend class Service;
+    friend class Connection;
 };
 
 # endif // _SocketAddress_h_

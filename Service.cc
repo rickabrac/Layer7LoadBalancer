@@ -1,6 +1,6 @@
 //
 //  Service.cc
-//  L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -113,7 +113,7 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 		if( ::bind( context->socket, (struct sockaddr *) &context->sockAddr->sockaddr_in,
 			sizeof( struct sockaddr_in ) ) != 0 )
 		{
-			Exception::raise( "bind() failed (%s)", strerror( errno ) );
+			Exception::raise( "bind() failed (%s) must be run as superuser", strerror( errno ) );
 		}
 
 		if( listen( context->socket, -1 ) != 0 )

@@ -1,6 +1,6 @@
 //
 //  Connection.cc
-//	L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,6 +103,9 @@ Connection :: Connection ( const char *destStr, bool secure )
 				destStr, strerror( errno ) );
 		}
 
+		int set = 1;
+		setsockopt( socket, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof( int ) );
+
 		// connect operation must be asynchronous to handle failures
 
 		int flags;
@@ -132,7 +135,6 @@ Connection :: Connection ( const char *destStr, bool secure )
 				FD_ZERO( &empty_fdset );
 				FD_SET( socket, &fdset );
 				struct timeval timeout;
-				bzero( &timeout, sizeof( timeout ) );
 				timeout.tv_sec = 0; 
 				timeout.tv_usec = 100000; 
 
@@ -195,7 +197,9 @@ Connection :: Connection ( const char *destStr, bool secure )
 		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
 			destStr, strerror( errno ) );
 	}
+
 	flags &= ~O_NONBLOCK; 
+
 	if( fcntl( socket, F_SETFL, flags ) < 0 )
 	{ 
 		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n", destStr, strerror( errno ) );

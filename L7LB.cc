@@ -17,7 +17,7 @@
 //  limitations under the License.
 //
 
-# define TRACE    1
+// # define TRACE    1
 
 # include "Service.h"
 # include "Session.h"
@@ -130,7 +130,6 @@ int main( int argc, char **argv )
 			exit( -1 );
 		}
 	}	
-	Log::log( "WAITING..." );
 	done.wait();
 }
 

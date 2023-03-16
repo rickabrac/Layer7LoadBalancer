@@ -1,6 +1,6 @@
 //
 //  ProxySession.cc
-//  L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -142,8 +142,10 @@ ProxySession :: _main ( ProxySessionContext *context )
 						++loopReads;
 						ssize_t sent, total = 0;
 						size_t recvLen = len;
-// context->buf[ len// ] = '\0';
-// Log::log( "SENDING %d BYTES [\n%s]", len, context->buf );
+# if TRACE
+ 						context->buf[ len ] = '\0';
+						Log::log( "SENDING %d BYTES [\n%s]", len, context->buf );
+# endif // TRACE
 						while( len
 							&& (sent = context->proxy->write( ((char *) context->buf) + total, len )) <= len )
 						{
@@ -174,10 +176,6 @@ ProxySession :: _main ( ProxySessionContext *context )
 							len -= sent;
 							total += sent;
 						}
-# if TRACE
-						Log::log( "ProxySession[ %p ]::_main: SEND TO SERVER [\n%s]",
-							context, context->buf );
-# endif // TRACE
 						if( recvLen == context->bufLen )
 						{
 							context->service->bufLenMutex.lock();
@@ -210,16 +208,6 @@ ProxySession :: _main ( ProxySessionContext *context )
 						delete( context );
 						return;
 					}
-// 					else if( len == 0 )
-// 					{
-// 						if( context->clientSSL )
-// 							(void) SSL_write( context->clientSSL, (void *) "", 0 ); 
-// 						else
-// 							(void) send( context->clientSocket, (void *) "", 0, 0 );
-// # if TRACE
-// 						Log::log( "ProxySession[ %p ]::_main: WROTE NOTHING TO CLIENT", context );
-// # endif // TRACE
-// 					}
 				}
 
 				if( FD_ISSET( context->proxy->socket, &fdset ) || context->proxy->pending() ) 
@@ -229,10 +217,9 @@ ProxySession :: _main ( ProxySessionContext *context )
 					// receive from server
 					if( (pending = context->proxy->read( context->buf, context->bufLen )) > 0 )
 					{
-//						Log::log( "ProxySession[ %p ]::_main: RECEIVED %d BYTES FROM SERVER", context, pending );
 # if TRACE
-//						Log::log( "ProxySession[ %p ]::_main: RECEIVED FROM SERVER [%s]",
-//							context, context->buf );
+						Log::log( "ProxySession[ %p ]::_main: RECEIVED %d BYTES FROM SERVER", context, pending );
+//						Log::log( "ProxySession[ %p ]::_main: RECEIVED FROM SERVER [%s]", context, context->buf );
 # endif // TRACE
 						++loopReads;
 						ssize_t sent;
@@ -244,10 +231,11 @@ ProxySession :: _main ( ProxySessionContext *context )
 							sent = send( context->clientSocket, context->buf + total, (int) pending, 0 );
 						while( pending && sent <= pending ) 
 						{
-							// send to client
 							if( sent < 0 )
 							{
-								Log::log( "SENT=%d PENDING=%d", sent, pending );
+# if TRACE
+								Log::log( "ProxySession[ %p ]::_main: PENDING=%d SENT=%d", context, pending, sent );
+# endif // TRACE
 								if( context->clientSSL )
 								{
 									Log::log( "ProxySession[ %p ]::_main SSL_write() failed [%d] (%s)",
@@ -262,13 +250,15 @@ ProxySession :: _main ( ProxySessionContext *context )
 								return;
 							}
 							if( pending == 0 )
-								usleep( 250 );
+{
+Log::log( "USLEEP( 1000 )" );
+								usleep( 1000 );
+}
 							pending -= sent;
 							total += sent;
 						}
 # if TRACE
-//						Log::log( "ProxySession[ %p ]::_main: SEND TO CLIENT [\n%s]",
-//							context, context->buf );
+//						Log::log( "ProxySession[ %p ]::_main: SEND TO CLIENT [\n%s]", context, context->buf );
 # endif // TRACE
 						if( recvLen == context->bufLen )
 						{
@@ -302,7 +292,12 @@ ProxySession :: _main ( ProxySessionContext *context )
 					}
 				}
 				if( loopReads == 0 )
+				{
+# if TRACE
+					Log::log( "loopReads == 0" );
+# endif // TRACE
 					usleep( 100000 );
+				}
 			}
 			else
 			{

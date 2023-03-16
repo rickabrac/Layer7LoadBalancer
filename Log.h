@@ -1,6 +1,6 @@
 //
 //  Log.h
-//  L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,25 +20,25 @@
 
 class Log
 {
-	public:
+    public:
 
-		static void log( const char *msgFormat, ... )
-		{
-			static mutex _mutex;
-			_mutex.lock();
-			static char msgBuf[ 1024 ];
-			va_list msgArgs;
-			va_start( msgArgs, msgFormat );
-			vsprintf( msgBuf, msgFormat, msgArgs );
-			va_end( msgArgs );
-			printf( "%s\n", msgBuf );
-			fflush( stdout );
-			_mutex.unlock();
-		}
-
-	private:
-
+	static void log( const char *msgFormat, ... )
+	{
 		static mutex _mutex;
+		_mutex.lock();
+		static char msgBuf[ 1024 ];
+		va_list msgArgs;
+		va_start( msgArgs, msgFormat );
+		vsprintf( msgBuf, msgFormat, msgArgs );
+		va_end( msgArgs );
+		printf( "%s\n", msgBuf );
+		fflush( stdout );
+		_mutex.unlock();
+	}
+
+    private:
+
+	static mutex _mutex;
 };
 
 # endif // _Log_h_

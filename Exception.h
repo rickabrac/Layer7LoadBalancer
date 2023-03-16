@@ -1,6 +1,6 @@
 //
 //  Exception.h
-//	L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,16 +20,20 @@
 
 class Exception
 {
-	public:
-		static void raise( const char *fmt, ... )
-		{
-			va_list args;
-			va_start( args, fmt );
-			static char buf[ 8192 ];
-			vsprintf( buf, fmt, args );
-			va_end( args );
-			throw( (const char *) buf );
-		}
+    public:
+
+	static void raise( const char *fmt, ... )
+	{
+		static mutex mutex;
+		mutex.lock();
+		va_list args;
+		va_start( args, fmt );
+		static char buf[ 8192 ];
+		vsprintf( buf, fmt, args );
+		va_end( args );
+		throw( (const char *) buf );
+		mutex.unlock();
+	}
 };
 
 # endif // _Exception_h_

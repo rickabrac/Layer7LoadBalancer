@@ -1,6 +1,6 @@
 //
 //  Session.h
-//  L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,33 +26,34 @@ class Session;
 
 class SessionContext : public ThreadContext
 {
-	public:
+    public:
+
         SessionContext( Service *daemon, int clientSocket, SSL *clientSSL = NULL );
-		~SessionContext();
+	~SessionContext();
 
-	protected:
+    protected:
         Service *service;
-		Session *session;
-		int clientSocket;
-		SSL *clientSSL;
+	Session *session;
+	int clientSocket;
+	SSL *clientSSL;
 
-	friend class Session;
-	friend class Service;
+    friend class Session;
+    friend class Service;
 };
 
 class Session : public Thread
 {
-	public:
+    public:
 
-		Session( SessionContext *context );
-		virtual ~Session();
-		void stop( void );
+	Session( SessionContext *context );
+	virtual ~Session();
+	void stop( void );
 
-	private:
+    private:
 
-		SessionContext *context;
+	SessionContext *context;
 
-	friend class Service; 
+    friend class Service; 
 };
 
 # endif // _Session_h_

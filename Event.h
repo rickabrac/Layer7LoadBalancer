@@ -1,6 +1,6 @@
 //
 //  Event.h
-//	L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,29 +24,31 @@ using namespace std;
 
 class Event
 {
-	public:
-		Event( void )
-		{
-			_mutex.lock();
-		}
+    public:
 
-		~Event( void )
-		{
-			_mutex.unlock();
-		}
+	Event( void )
+	{
+		_mutex.lock();
+	}
 
-		void signal( void )
-		{
-			_mutex.unlock();
-		}
+	~Event( void )
+	{
+		_mutex.unlock();
+	}
 
-		void wait( void )
-		{
-			_mutex.lock();
-		}
+	void signal( void )
+	{
+		_mutex.unlock();
+	}
 
-	private:
-		mutex _mutex;
+	void wait( void )
+	{
+		_mutex.lock();
+	}
+
+    private:
+
+	mutex _mutex;
 };
 
 # endif // _Event_h_

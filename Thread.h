@@ -1,6 +1,6 @@
 //
 //  Thread.h
-//  L7LB (Layer7LoadBalancer)
+//  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,59 +27,61 @@ using namespace std;
 
 class ThreadContext
 {
-	public:
-		ThreadContext( void ) { }
+    public:
+
+	ThreadContext( void ) { }
 };
 
 typedef void (*ThreadMain)( ThreadContext * );
 
 class Thread
 {
-	public:
-		Thread( ThreadContext *context )
-		{
-			this->context = context;
-		}
+    public:
 
-		~Thread()
-		{
-			delete( t );
-		}
+	Thread( ThreadContext *context )
+	{
+		this->context = context;
+	}
 
-		virtual ThreadMain main( void ) = 0;
+	~Thread()
+	{
+		delete( t );
+	}
 
-		void run( void )
-		{
-			t = new thread( main(), context );
-		}
+	virtual ThreadMain main( void ) = 0;
 
-		void join( void )
-		{
-			t->join();
-		}
+	void run( void )
+	{
+		t = new thread( main(), context );
+	}
 
-		void detach( void )
-		{
-			t->detach();
-		}
+	void join( void )
+	{
+		t->join();
+	}
 
-		void sleep( int millliseconds )
-		{
-			std::chrono::duration<int64_t, std::ratio<1,1000>> duration( millliseconds );
-			std::this_thread::sleep_for( duration );
-		}
+	void detach( void )
+	{
+		t->detach();
+	}
 
-		static string tid()
-		{
-			std::ostringstream ss;
-			ss << std::this_thread::get_id();
-			return ss.str();
-		}
+	void sleep( int millliseconds )
+	{
+		std::chrono::duration<int64_t, std::ratio<1,1000>> duration( millliseconds );
+		std::this_thread::sleep_for( duration );
+	}
 
-		ThreadContext *context;
+	static string tid()
+	{
+		std::ostringstream ss;
+		ss << std::this_thread::get_id();
+		return ss.str();
+	}
 
-	private:
-		thread *t;
+	ThreadContext *context;
+
+    private:
+	thread *t;
 };
 
 # endif // _Thread_h_
