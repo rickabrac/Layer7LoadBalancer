@@ -72,10 +72,10 @@ class L7LBService : public Service
 
 		Session *getSession( int clientSocket, SSL *clientSSL )
 		{
-// 			char buf[ 1024 ];
-// 			bzero( buf, sizeof( buf ) );
-// 			int peeked = context->service->clientPeek( clientSocket, clientSSL, buf, sizeof( buf ) );
-// 			buf[ peeked ] = '\0';
+ 			char buf[ 1024 ];
+ 			bzero( buf, sizeof( buf ) );
+ 			int peeked = context->service->clientPeek( clientSocket, clientSSL, buf, sizeof( buf ) );
+ 			buf[ peeked ] = '\0';
 // # if TRACE
 // 			Log::log( "PEEK=[\n%s]", buf );
 // # endif // TRACE

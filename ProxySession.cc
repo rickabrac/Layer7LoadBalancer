@@ -17,7 +17,6 @@
 
 # include "ProxySession.h"
 # include "Exception.h"
-# include "Event.h"
 # include "Log.h"
 # include <fcntl.h>
 
@@ -89,16 +88,8 @@ ProxySession :: _main ( ProxySessionContext *context )
 		fd_set empty_fdset;
 		struct timeval timeout;
 		bzero( &timeout, sizeof( timeout ) );
-		if( context->useTLS )
-		{
-			timeout.tv_sec = 1; 
-			timeout.tv_usec = 0;
-		}
-		else
-		{
-			timeout.tv_sec = 0; 
-			timeout.tv_usec = 100000;
-		}
+		timeout.tv_sec = 0; 
+		timeout.tv_usec = 100000;
 		int selected;
 
 		FD_ZERO( &fdset );
@@ -250,10 +241,10 @@ ProxySession :: _main ( ProxySessionContext *context )
 								return;
 							}
 							if( pending == 0 )
-{
-Log::log( "USLEEP( 1000 )" );
+							{
+								Log::log( "USLEEP( 1000 )" );
 								usleep( 1000 );
-}
+							}
 							pending -= sent;
 							total += sent;
 						}
@@ -296,7 +287,7 @@ Log::log( "USLEEP( 1000 )" );
 # if TRACE
 					Log::log( "loopReads == 0" );
 # endif // TRACE
-					usleep( 100000 );
+					usleep( 10000 );
 				}
 			}
 			else

@@ -113,7 +113,7 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 		if( ::bind( context->socket, (struct sockaddr *) &context->sockAddr->sockaddr_in,
 			sizeof( struct sockaddr_in ) ) != 0 )
 		{
-			Exception::raise( "bind() failed (%s) must be run as superuser", strerror( errno ) );
+			Exception::raise( "bind() failed (%s) running as superuser?", strerror( errno ) );
 		}
 
 		if( listen( context->socket, -1 ) != 0 )
