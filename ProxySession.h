@@ -26,7 +26,19 @@
 class ProxySessionContext : public SessionContext
 {
 	public:
-		ProxySessionContext( Service *service, int clientSocket, SSL *clientSSL, const char *destStr, bool useTLS );
+		ProxySessionContext
+		(
+			Service *service,
+			int clientSocket,
+			SSL *clientSSL,
+			const char *destStr,
+			bool useTLS,
+			const char *protocolHeaderAttribute = nullptr,
+			const char *protocolStartHeader = "HTTP/1.1 200 OK\r\n",
+			const char *protocolAttributeSeparator = ":",
+			const char *protocolEndAttribute = "\r\n",
+			const char *protocolEndHeader = "\r\n"
+		);
 		~ProxySessionContext();
 
 	private:
@@ -34,6 +46,11 @@ class ProxySessionContext : public SessionContext
 		size_t bufLen;
 		const char *destStr;
 		bool useTLS; 
+		const char *protocolSessionAttribute;
+		const char *protocolStartHeader;
+		const char *protocolAttributeSeparator;
+		const char *protocolEndAttribute;
+		const char *protocolEndHeader;
 		Connection *proxy = nullptr;
 
 	friend class ProxySession;

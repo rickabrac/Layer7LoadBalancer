@@ -58,7 +58,6 @@ class Service : public Thread
 
 	Service( ServiceContext *context );
 	~Service();
-	ssize_t clientPeek( int clientSocket, SSL *clientSSL, void *buf, size_t len );
 
     protected:
 
@@ -68,7 +67,7 @@ class Service : public Thread
 
 	ServiceContext *context; 
 	virtual Session *getSession( int clientSocket, SSL *clientSSL = nullptr ) = 0;
-	bool getCookie( const char *name ); 
+	virtual void notifySessionProtocolAttribute( string *value );
 	bool isSecure( void );
 	map< string, Session * > sessions;
 	mutex sessionMutex;

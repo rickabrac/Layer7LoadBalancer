@@ -39,13 +39,13 @@ class ServiceConfig
 {
     public:
 
-	ServiceConfig(
+	ServiceConfig (
 		string listenStr,
 		string certPath,
 		string keyPath,
 		string trustPath,
-		vector<string> *sessionCookies,
-		vector<SessionConfig *> *sessionConfigs )
+		string sessionCookie,
+		vector< SessionConfig * > *sessionConfigs )
 	{
 # if TRACE
 		cout << "ServiceConfig( \""
@@ -53,14 +53,14 @@ class ServiceConfig
 			<< certPath << "\", \""
 			<< keyPath << "\", "
 			<< trustPath << "\", "
-			<< sessionConfigs << ", "
-			<< sessionCookies << endl;
+			<< sessionCookie << ", " 
+			<< sessionConfigs << endl;
 # endif // TRACE
 		this->listenStr = listenStr;
-		this->sessionCookies = sessionCookies;
 		this->certPath = certPath;
 		this->keyPath = keyPath;
 		this->trustPath = trustPath;
+		this->sessionCookie = sessionCookie;
 		this->sessionConfigs = sessionConfigs;
 	}
 
@@ -68,8 +68,8 @@ class ServiceConfig
 	string certPath;
 	string keyPath;
 	string trustPath;
-	vector<string> *sessionCookies;
-	vector<SessionConfig *> *sessionConfigs;	
+	string sessionCookie;
+	vector< SessionConfig * > *sessionConfigs;	
 };
 
 class L7LBConfig
@@ -146,7 +146,7 @@ class L7LBConfig
 		string *keyPath = nullptr;
 		string *certPath = nullptr;
 		string *trustPath = nullptr;
-		vector<string> *sessionCookies = new vector<string>();
+		string *sessionCookie;
 		if( (protocol = nextToken()) == nullptr )
 			return nullptr;
 		if( *protocol == "#" )
@@ -177,9 +177,7 @@ class L7LBConfig
 			else if( *name == "TRUST" )
 				trustPath = value;
 			else if( *name == "SESSION-COOKIE" )
-			{
-				sessionCookies->push_back( *value );
-			}
+				sessionCookie = value;
 			else if( *name == "TCP" || *name == "TLS" )
 			{
 				const char *destStr = value->c_str();
@@ -202,7 +200,7 @@ class L7LBConfig
 			keyPath == nullptr ? "" : *keyPath,
 			certPath == nullptr ? "" : *certPath,
 			trustPath == nullptr ? "" : *trustPath,
-			sessionCookies,
+			sessionCookie == nullptr ? "" : *sessionCookie,
 			sessionConfigs
 		);
 	}

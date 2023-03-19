@@ -19,11 +19,23 @@
 # include "Exception.h"
 # include "Log.h"
 # include <fcntl.h>
+# include <map>
+# include <string.h>
 
 // # define TRACE    1
 
-ProxySessionContext :: ProxySessionContext( Service *service, int clientSocket, SSL *clientSSL, const char *destStr, bool useTLS )
-	: SessionContext( service, clientSocket, clientSSL )
+ProxySessionContext :: ProxySessionContext(
+	Service *service,
+	int clientSocket,
+	SSL *clientSSL,
+	const char *destStr,
+	bool useTLS,
+	const char *protocolSessionAttribute,
+	const char *protocolStartHeader,
+	const char *protocolAttributeSeparator,
+	const char *protocolEndAttribute,
+	const char *protocolEndHeader
+) : SessionContext( service, clientSocket, clientSSL ) //, protocolSessionAttribute )
 {
 # if TRACE
 	Log::log( "ProxySessionContext::ProxySessionContext()" );
@@ -33,6 +45,11 @@ ProxySessionContext :: ProxySessionContext( Service *service, int clientSocket, 
 	this->clientSSL = clientSSL;
 	this->destStr = destStr;
 	this->useTLS = useTLS;
+	this->protocolSessionAttribute = protocolSessionAttribute;
+	this->protocolStartHeader = protocolStartHeader;
+	this->protocolAttributeSeparator = protocolAttributeSeparator;
+	this->protocolEndAttribute  = protocolEndAttribute;
+	this->protocolEndHeader = protocolEndHeader;
 	this->bufLen = service->bufLen;
 	this->buf = (char *) malloc( service->bufLen );
 }
@@ -80,7 +97,8 @@ ProxySession :: _main ( ProxySessionContext *context )
 	}
 
 	ssize_t pending = 0;
-	int loops = 0;
+	int loops = 0; 
+
 
 	for( ;; )
 	{
@@ -116,6 +134,7 @@ ProxySession :: _main ( ProxySessionContext *context )
 				}
 
 				size_t loopReads = 0;
+
 				if( loops == 0 || FD_ISSET( context->clientSocket, &fdset ) || (context->clientSSL && SSL_pending( context->clientSSL )) )
 				{
 					// client has data ready
@@ -135,7 +154,7 @@ ProxySession :: _main ( ProxySessionContext *context )
 						size_t recvLen = len;
 # if TRACE
  						context->buf[ len ] = '\0';
-						Log::log( "SENDING %d BYTES [\n%s]", len, context->buf );
+						Log::log( "SENDING %d BYTES TO SERVER [\n%s]", len, context->buf );
 # endif // TRACE
 						while( len
 							&& (sent = context->proxy->write( ((char *) context->buf) + total, len )) <= len )
@@ -167,6 +186,7 @@ ProxySession :: _main ( ProxySessionContext *context )
 							len -= sent;
 							total += sent;
 						}
+
 						if( recvLen == context->bufLen )
 						{
 							context->service->bufLenMutex.lock();
@@ -229,13 +249,17 @@ ProxySession :: _main ( ProxySessionContext *context )
 # endif // TRACE
 								if( context->clientSSL )
 								{
+# ifdef TRACE
 									Log::log( "ProxySession[ %p ]::_main SSL_write() failed [%d] (%s)",
 										context, errno, ERR_error_string( ERR_get_error(), NULL ) );
+# endif // TRACE
 								}
 								else
 								{
+# ifdef TRACE
 									Log::log( "ProxySession[ %p ]::_main: send() failed [%d] (%s)",
 										context, errno, strerror( errno ) );
+# endif // TRACE
 								}
 								delete( context );
 								return;
@@ -249,8 +273,46 @@ ProxySession :: _main ( ProxySessionContext *context )
 							total += sent;
 						}
 # if TRACE
-//						Log::log( "ProxySession[ %p ]::_main: SEND TO CLIENT [\n%s]", context, context->buf );
+//						Log::log( "ProxySession[ %p ]::_main: SENT TO CLIENT [\n%s]", context, context->buf );
 # endif // TRACE
+						if( strncmp( context->buf, context->protocolStartHeader, strlen( context->protocolStartHeader )  ) == 0 )
+						{
+							ProxySessionContext *proxySessionContext = (ProxySessionContext *) context;
+							char lineBuf[ 1024 ];
+							char *line = context->buf + 17;
+							char *newline;
+							const char *endOfRecord = context->protocolEndAttribute;
+							const char *recordSeparator = context->protocolAttributeSeparator; 
+							while( (newline = strstr( line, endOfRecord )) )
+							{
+								if( strncmp( line, endOfRecord, strlen( endOfRecord ) ) == 0 )
+									break;
+								bzero( lineBuf, sizeof( lineBuf ) );
+								memcpy( lineBuf, line, newline - line );
+								char *c1;
+								for( c1 = lineBuf; *c1 && isspace( *c1 ); c1++ );
+								char *c2;
+								for( c2 = c1; strncmp( c2, recordSeparator, strlen( recordSeparator ) ) != 0 && strstr( c2, endOfRecord ) != c2; c2++ );
+								if( strncmp( c2, recordSeparator, strlen( recordSeparator ) ) == 0 )
+								{
+									*c2++ = '\0';
+									const char *name = c1;
+									while( isspace( *c2 ) )
+										++c2;
+									if( strcmp( proxySessionContext->protocolSessionAttribute, name ) == 0 )
+									{
+# if TRACE
+										Log::log( "ATTRIBUTE [%s: %s]", name, c2 );
+# endif // TRACE
+										string value( c2 );
+										proxySessionContext->service->notifySessionProtocolAttribute( &value );
+										break;
+									}
+								}
+								line = newline + 2;
+							}
+						}
+
 						if( recvLen == context->bufLen )
 						{
 							context->service->bufLenMutex.lock();
@@ -293,6 +355,9 @@ ProxySession :: _main ( ProxySessionContext *context )
 			else
 			{
 				Log::log( "ProxySession[ %p ]::_main: select() failed (%s) [%d]", context, strerror( errno ), errno );
+				// ### EXPERIMENT TO FIX CRASH ON TELNET CONNECTION ###
+				context->clientSSL = nullptr;
+				context->clientSocket = -1;
 				delete( context );
 				return;
 			}

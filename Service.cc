@@ -103,6 +103,9 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 		if( fcntl( context->socket, F_SETFD, 1 ) == -1 )
 			Exception::raise( "fcntl( F_SETFD, 1 ) failed", strerror( errno ) );
 
+		int set = 1;
+		setsockopt( context->socket, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof( int ) );
+
 		// set SO_REUSEADDR so bind() doesn't fail after restart
 		int optval = 1;
 		if( setsockopt( context->socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof( optval ) ) < 0 )
@@ -133,12 +136,20 @@ Service :: ~Service()
 # endif // TRACE
 	if( ServiceContext::ssl_ctx )
 		SSL_CTX_free( ServiceContext::ssl_ctx );
-	close( context->socket );
+	if( context->socket > -1 )
+		(void) close( context->socket );
 }
 
 bool Service :: isSecure()
 {
 	return( context->certPath && *context->certPath && context->keyPath && *context->keyPath );
+}
+
+void
+Service :: notifySessionProtocolAttribute( string *value ) 
+{
+	if( value == nullptr ) return; // avoid unused variable warning
+	return;
 }
 
 void Service :: _main( ServiceContext *context )
@@ -177,7 +188,7 @@ void Service :: _main( ServiceContext *context )
 					Exception::raise( "SSL_new() failed (%s)", ERR_error_string( ERR_get_error(), NULL ) );
 				}
 # if TRACE
-				Log::log( "Service::main: clientSocket=%d clientSSL=<%p>", clientSocket, clientSSL );
+				Log::log( "Service::_main: clientSocket=%d clientSSL=<%p>", clientSocket, clientSSL );
 # endif // TRACE
 
 				if( !SSL_set_fd( clientSSL, clientSocket ) )
@@ -186,16 +197,25 @@ void Service :: _main( ServiceContext *context )
 						ERR_error_string( ERR_get_error(), NULL ) ); 
 				}
 
+				SSL_set_accept_state( clientSSL );
+
 				int result = 0;
 				if( (result = SSL_accept( clientSSL )) < 0 ) 
 				{
-					Exception::raise( "SSL_accept() failed (%s) [%d]",
-						ERR_error_string( ERR_get_error(), NULL ), result); 
+					SSL_shutdown( clientSSL );
+					SSL_free( clientSSL );
+					(void) close( clientSocket );
+
+					int optval = 1;
+					if( setsockopt( context->socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof( optval ) ) < 0 )
+					{
+						Exception::raise( "setsockopt( SO_REUSEADDR ) on listen socket failed (%s)", strerror( errno ) );
+					}
 				}
 
 				if( result == 0 )
 				{
-					Exception::raise( "SSL_accept() failed" );
+					Exception::raise( "SSL_accept() == 0" );
 					return;
 				}
 			}
@@ -216,13 +236,5 @@ void Service :: _main( ServiceContext *context )
 			Log::log( "Service::_main: %s", error ); 
 		}
 	}
-}
-
-ssize_t
-Service :: clientPeek( int clientSocket, SSL *clientSSL, void *buf, size_t len )
-{
-	if( clientSSL ) 
-		return( SSL_peek( clientSSL, buf, (int) len ) );
-	return( recv( clientSocket, buf, len, MSG_PEEK ) );
 }
 

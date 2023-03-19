@@ -17,6 +17,8 @@
 //  limitations under the License.
 //
 
+// * BUG * Connecting to a TLS Service breaks if non-TLS connection attempted
+
 // # define TRACE    1
 
 # include "Service.h"
@@ -30,6 +32,7 @@
 # include <iostream>
 # include <fstream>
 # include <string>
+# include <map>
 
 # define _L7LBConfig_h_    1
 # include "L7LBConfig.h"
@@ -46,11 +49,13 @@ class L7LBServiceContext: public ServiceContext
 			ServiceContext( serviceConfig->listenStr.c_str(), serviceConfig->keyPath.c_str(), serviceConfig->certPath.c_str() )
 		{
 			this->sessionConfigs = serviceConfig->sessionConfigs;
+			this->sessionCookie = serviceConfig->sessionCookie.c_str();
 		}
 
 	private:
 
-		vector<SessionConfig *> *sessionConfigs;
+		vector< SessionConfig * > *sessionConfigs;
+		const char *sessionCookie;
 
 	friend class L7LBService;
 };
@@ -72,21 +77,27 @@ class L7LBService : public Service
 
 		Session *getSession( int clientSocket, SSL *clientSSL )
 		{
- 			char buf[ 1024 ];
- 			bzero( buf, sizeof( buf ) );
- 			int peeked = context->service->clientPeek( clientSocket, clientSSL, buf, sizeof( buf ) );
- 			buf[ peeked ] = '\0';
-// # if TRACE
-// 			Log::log( "PEEK=[\n%s]", buf );
-// # endif // TRACE
 			L7LBServiceContext *_context = (L7LBServiceContext *) context;
 			vector<SessionConfig *> sessionConfigs = *_context->sessionConfigs;
 			int sessionIndex = 0;	// use first session configuration if multiple specified for now
 			SessionConfig sessionConfig = *sessionConfigs[ sessionIndex ];
 			const char *destStr = sessionConfig.destStr;
 			bool secure = sessionConfig.secure;
-			ProxySessionContext *context = new ProxySessionContext( this, clientSocket, clientSSL, destStr, secure );
+			ProxySessionContext *context = new ProxySessionContext(
+				this,
+				clientSocket,
+				clientSSL,
+				destStr,
+				secure,
+				this->context->sessionCookie
+			);
 			return( new ProxySession( context ) );
+		}
+
+		void notifySessionProtocolAttribute( string *value )
+		{
+			// assume single session-cookie for now 
+			Log::log( "notifyProxyProtocolAttribute( \"%s\" )", value->c_str() );
 		}
 };
 

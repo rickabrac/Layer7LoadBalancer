@@ -37,8 +37,8 @@ testtls: $(OBJECTS) TestTLS.cc
 testtcp: $(OBJECTS) TestTCP.cc
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto TestTCP.cc -o testtcp
 
-testl7lb: $(OBJECTS) TestTCP.cc
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto TestL7LB.cc -o testl7lb
+# testl7lb: $(OBJECTS) TestTCP.cc
+#	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto TestL7LB.cc -o testl7lb
 
 l7lb: $(OBJECTS) L7LB.cc
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto L7LB.cc -o l7lb 

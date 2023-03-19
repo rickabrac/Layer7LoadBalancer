@@ -20,6 +20,7 @@
 
 # include "Thread.h"
 # include <openssl/ssl.h>
+# include <set>
 
 class Service;
 class Session;
@@ -28,14 +29,16 @@ class SessionContext : public ThreadContext
 {
     public:
 
-        SessionContext( Service *daemon, int clientSocket, SSL *clientSSL = NULL );
+    SessionContext( Service *daemon, int clientSocket, SSL *clientSSL = nullptr ); // , const char *protocolSessionAttribute = nullptr );
 	~SessionContext();
 
     protected:
-        Service *service;
+
+    Service *service;
 	Session *session;
 	int clientSocket;
 	SSL *clientSSL;
+    // const char *protocolSessionAttribute;
 
     friend class Session;
     friend class Service;

@@ -142,7 +142,8 @@ Connection :: Connection ( const char *destStr, bool secure )
 
 				if( result < 0 && errno != EINTR )
 				{
-					Exception::raise( "Connection::Connection( \"%s\" ) select() failed (%s)", destStr, strerror( errno ) );
+					Exception::raise( "Connection::Connection( \"%s\" ) select() failed (%s)",
+						destStr, strerror( errno ) );
 				} 
 				else if( result > 0 )
 				{
@@ -152,18 +153,21 @@ Connection :: Connection ( const char *destStr, bool secure )
 					if( getsockopt( socket, SOL_SOCKET, SO_ERROR, (void *)(&optval), &optlen ) < 0 )
 					{ 
 # ifdef TRACE
-						Exception::raise( "Connection::Connection( \"%s\" ) getsockopt() failed (%s)", destStr, strerror( errno ) );
+						Exception::raise( "Connection::Connection( \"%s\" ) getsockopt() failed (%s)",
+							destStr, strerror( errno ) );
 # endif // TRACE
 					} 
 					// check the value returned... 
 					if( optval )
 					{ 
 # ifdef TRACE
-						Log::log( "Connection::Connection( \"%s\" ) getsockopt() failed (%s) [%d]", destStr, strerror( optval ), optval );
+						Log::log( "Connection::Connection( \"%s\" ) getsockopt() failed (%s) [%d]",
+							destStr, strerror( optval ), optval );
 # endif // TRACE
 						if( optval == 61 )
 						{
-							Exception::raise( "Connection::Connection( \"%s\" ) server down?", destStr, strerror( errno ) );
+							Exception::raise( "Connection::Connection( \"%s\" ) server down?",
+								destStr, strerror( errno ) );
 						}
 						else
 							continue;
@@ -173,7 +177,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 # ifdef TRACE
 						Log::log( "Connection::Connection( \"%s\" ) select() timed out", destStr );
 # endif // TRACE
-						close( socket );
+//						(void) close( socket );
 						continue;
 					} 
 				}
@@ -181,7 +185,8 @@ Connection :: Connection ( const char *destStr, bool secure )
 			else
 			{ 
 # ifdef TRACE
-				Exception::raise( "Connection::Connection( \"%s\" ) connect() failed (%s)", destStr, strerror( errno ) );
+				Exception::raise( "Connection::Connection( \"%s\" ) connect() failed (%s)",
+					destStr, strerror( errno ) );
 # endif // TRACE
 			} 
 		}
@@ -202,29 +207,32 @@ Connection :: Connection ( const char *destStr, bool secure )
 
 	if( fcntl( socket, F_SETFL, flags ) < 0 )
 	{ 
-		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n", destStr, strerror( errno ) );
+		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n",
+			destStr, strerror( errno ) );
 	} 
 
 	if( secure )
 	{
 		if( !(ssl = SSL_new( Connection::ssl_ctx )) )
 		{
-			(void) close( socket );
+//			(void) close( socket );
 			Connection::connectionMutex.unlock();
 			Exception::raise( "Connection::Connection( %s ) SSL_new() failed (%s)", destStr, SSL_error() );
 		}
 
 		if( !SSL_set_fd( ssl, socket ) )
 		{
-			(void) close( socket );
+//			(void) close( socket );
 			Connection::connectionMutex.unlock();
 			Exception::raise( "Connection::Connection( %s ) SSL_set_fd() failed (%s)", destStr, SSL_error() );
 		}
 
+		SSL_set_connect_state( ssl );
+
 		int SSL_connected;
 		if( (SSL_connected = SSL_connect( ssl )) <= 0 ) 
 		{
-			(void) close( socket );
+//			(void) close( socket );
 			Connection::connectionMutex.unlock();
 			Exception::raise( "Connection::Connection( %s ) SSL_connect() failed (%s) [%d]",
 				destStr, SSL_connected == -1 ? "out of resource?" : SSL_error(), SSL_connected );
@@ -282,15 +290,24 @@ Connection :: ~Connection ()
 # endif // TRACE
 	if( ssl )
 	{
-# if TRACE
-		Log::log( "Connection::~Connection() SSL_free( %p )", ssl );
+# ifdef TRACE
+		Log::log( "Connection::~Connection: SSL_shutdown( %p )", ssl );
+# endif // TRACE
+		SSL_shutdown( ssl );
+# ifdef TRACE
+		Log::log( "Connection::~Connection: SSL_free( %p )", ssl );
 # endif // TRACE
 		SSL_free( ssl );
 	}
 	if( sockAddr )
 		delete( sockAddr );
-	if( socket > 0 )
+	if( socket > -1 )
+	{
+# ifdef TRACE
+		Log::log( "Connection::~Connection: close( %d )", socket );
+# endif // TRACE
 		(void) close( socket );
+	}
 	Connection::connectionMutex.lock();
 	string tid = Thread::tid();
 	if( Connection::connections.erase( tid ) == 0 )
