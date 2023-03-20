@@ -49,7 +49,7 @@ ServiceContext :: ~ServiceContext()
 }
 
 SSL_CTX *ServiceContext :: ssl_ctx = NULL;
-size_t Service :: bufLen = 32768;
+size_t Service :: bufLen = 4096; // 32768;
 mutex Service :: bufLenMutex;
 
 Service :: Service( ServiceContext *context ) : Thread( context )
@@ -148,7 +148,7 @@ bool Service :: isSecure()
 void
 Service :: notifySessionProtocolAttribute( string *value ) 
 {
-	if( value == nullptr ) return; // avoid unused variable warning
+	if( value ) return; // avoid unused variable warning
 	return;
 }
 
@@ -197,7 +197,7 @@ void Service :: _main( ServiceContext *context )
 						ERR_error_string( ERR_get_error(), NULL ) ); 
 				}
 
-				SSL_set_accept_state( clientSSL );
+//				SSL_set_accept_state( clientSSL );
 
 				int result = 0;
 				if( (result = SSL_accept( clientSSL )) < 0 ) 

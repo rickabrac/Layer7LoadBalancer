@@ -35,9 +35,9 @@ class SessionContext : public ThreadContext
     protected:
 
     Service *service;
-	Session *session;
 	int clientSocket;
 	SSL *clientSSL;
+	Session *session = nullptr;
     // const char *protocolSessionAttribute;
 
     friend class Session;
@@ -50,7 +50,6 @@ class Session : public Thread
 
 	Session( SessionContext *context );
 	virtual ~Session();
-	void stop( void );
 
     private:
 

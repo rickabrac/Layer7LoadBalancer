@@ -25,42 +25,44 @@
 
 class ProxySessionContext : public SessionContext
 {
-	public:
-		ProxySessionContext
-		(
-			Service *service,
-			int clientSocket,
-			SSL *clientSSL,
-			const char *destStr,
-			bool useTLS,
-			const char *protocolHeaderAttribute = nullptr,
-			const char *protocolStartHeader = "HTTP/1.1 200 OK\r\n",
-			const char *protocolAttributeSeparator = ":",
-			const char *protocolEndAttribute = "\r\n",
-			const char *protocolEndHeader = "\r\n"
-		);
-		~ProxySessionContext();
+  public:
 
-	private:
-		char *buf;
-		size_t bufLen;
-		const char *destStr;
-		bool useTLS; 
-		const char *protocolSessionAttribute;
-		const char *protocolStartHeader;
-		const char *protocolAttributeSeparator;
-		const char *protocolEndAttribute;
-		const char *protocolEndHeader;
-		Connection *proxy = nullptr;
+	ProxySessionContext
+	(
+		Service *service,
+		int clientSocket,
+		SSL *clientSSL,
+		const char *destStr,
+		bool useTLS,
+		const char *protocolHeaderAttribute = nullptr,
+		const char *protocolStartHeader = "HTTP/1.1 200 OK\r\n",
+		const char *protocolAttributeSeparator = ":",
+		const char *protocolEndAttribute = "\r\n",
+		const char *protocolEndHeader = "\r\n"
+	);
+	~ProxySessionContext();
 
-	friend class ProxySession;
+  private:
+
+	char *buf;
+	size_t bufLen;
+	const char *destStr;
+	bool useTLS; 
+	const char *protocolSessionAttribute;
+	const char *protocolStartHeader;
+	const char *protocolAttributeSeparator;
+	const char *protocolEndAttribute;
+	const char *protocolEndHeader;
+	Connection *proxy = nullptr;
+
+  friend class ProxySession;
 };
 
 class ProxySession : public Session 
 {
 	public:
 		ProxySession( ProxySessionContext *context );
-		virtual ~ProxySession();
+		~ProxySession();
 		void stop( void );
 
 	private:

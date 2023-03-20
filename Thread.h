@@ -21,15 +21,19 @@
 # include <thread>
 # include <unistd.h>
 # include <sstream>
-#include <chrono>
 
 using namespace std;
+
+# include <mutex>
+# include "Log.h"
 
 class ThreadContext
 {
     public:
 
 	ThreadContext( void ) { }
+
+	~ThreadContext() { }
 };
 
 typedef void (*ThreadMain)( ThreadContext * );
@@ -45,6 +49,7 @@ class Thread
 
 	~Thread()
 	{
+//		Log::log( "Thread::~Thread: delete( t )" );
 		delete( t );
 	}
 
@@ -71,16 +76,17 @@ class Thread
 		std::this_thread::sleep_for( duration );
 	}
 
-	static string tid()
-	{
-		std::ostringstream ss;
-		ss << std::this_thread::get_id();
-		return ss.str();
-	}
+	// static string tid()
+	// {
+	// 	std::ostringstream ss;
+	// 	ss << std::this_thread::get_id();
+	// 	return ss.str();
+	// }
 
 	ThreadContext *context;
 
     private:
+
 	thread *t;
 };
 

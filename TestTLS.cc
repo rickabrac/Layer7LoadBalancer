@@ -246,7 +246,10 @@ class TestSession : public Thread
 				connection = new Connection( "localhost:666" );
 				int i;
 				TestSession::sessionMutex.lock();
-				TestSession::sessions[ context->session->tid() ] = context->session;
+				char sessionIdBuf[ 32 ];
+				sprintf( sessionIdBuf, "%p", context->session );
+				string sessionId( sessionIdBuf );
+				TestSession::sessions[ sessionId ] = context->session;
 				TestSession::sessionMutex.unlock();
 				for( i = 0; i < context->numEchos; i++ )
 				{
@@ -284,11 +287,13 @@ class TestSession : public Thread
 		void stop( void )
 		{
 			TestSession::sessionMutex.lock();
-			string tid = this->tid();
-			if( TestSession::sessions.erase( tid ) == 0 )
+			char sessionIdBuf[ 32 ];
+			sprintf( sessionIdBuf, "%p", this );
+			string sessionId( sessionIdBuf );
+			if( TestSession::sessions.erase( sessionId ) == 0 )
 			{
 				TestSession::sessionMutex.unlock();
-				Exception::raise( "sessions.erase( %s ) failed", tid.c_str() );
+				Exception::raise( "sessions.erase( %s ) failed", sessionId.c_str() );
 			}
 			if( TestSession::sessions.size() == 0 )
 				TestSession::done.signal();

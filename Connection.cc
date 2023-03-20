@@ -28,44 +28,13 @@ using namespace std;
 # define SSL_error() ERR_error_string( ERR_get_error(), NULL )
 
 SSL_CTX * Connection :: ssl_ctx = nullptr;
-map< string, Connection * > Connection :: connections;
-mutex Connection :: connectionMutex;
-
-const char *
-Connection :: error ( int errNum )
-{
-	if( errNum == 0 )
-		return( "out of resource?" );
-	return( SSL_error() );
-}
-
-void
-Connection :: debug ( void )
-{
-	Connection::connectionMutex.lock();
-	Log::log( "Connection::debug() connections.size()=%d", Connection::connections.size() );
-	for( auto it = Connection::connections.begin(); it != Connection::connections.end(); it++ )
-	{
-		string tid = (string) it->first;
-		Connection *sslc = (Connection *) it->second;
-		Log::log( "Connection::debug() connections[ %s ]=<%p>", tid.c_str(), sslc ); 
-	}
-	Connection::connectionMutex.unlock();
-}
+mutex Connection :: mutex;
 
 Connection :: Connection ( const char *destStr, bool secure )
 {
 	this->secure = secure;
 	
-	Connection::connectionMutex.lock();
-
-	string tid = Thread::tid();
-	if( connections.find( tid ) != connections.end() )
-	{
-		Connection::connectionMutex.unlock();
-		Exception::raise( "Connection::Connection( \"%s\" ) thread %s already has a Connection",
-			destStr, tid.c_str() );
-	}
+	Connection::mutex.lock();
 
 	if( secure && !Connection::ssl_ctx )
 	{
@@ -75,14 +44,13 @@ Connection :: Connection ( const char *destStr, bool secure )
 
   		if( SSL_library_init() < 0 )
 		{
-			Connection::connectionMutex.unlock();
 			Exception::raise( "Connection::Connection( \"%s\" ) SSL_library_init() failed (%s)",
 				destStr, SSL_error() );
 		}
 
 		if( (Connection::ssl_ctx = SSL_CTX_new( SSLv23_client_method() )) == NULL )
 		{
-			Connection::connectionMutex.unlock();
+			Connection::mutex.lock();
 			Exception::raise( "Connection::Connection( \"%s\" ) SSL_CTX_new() failed (%s)",
 				destStr, SSL_error() );
 		}
@@ -90,6 +58,8 @@ Connection :: Connection ( const char *destStr, bool secure )
 		SSL_CTX_set_options( Connection::ssl_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1
 			| SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION );
 	}
+
+	Connection::mutex.unlock();
 	
 	sockAddr = new SocketAddress( destStr );
 
@@ -98,7 +68,6 @@ Connection :: Connection ( const char *destStr, bool secure )
 		socket = ::socket( AF_INET, SOCK_STREAM, 0 );
 		if( socket == -1 )
 		{
-			Connection::connectionMutex.unlock();
 			Exception::raise( "Connection::Connection( \"%s\" ) socket() failed (%s)",
 				destStr, strerror( errno ) );
 		}
@@ -111,12 +80,14 @@ Connection :: Connection ( const char *destStr, bool secure )
 		int flags;
 		if( (flags = fcntl( socket, F_GETFL, NULL) ) < 0 )
 		{ 
+			(void) close( socket );
 			Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
 				destStr, strerror( errno ) );
 		}
 		flags |= O_NONBLOCK; 
 		if( fcntl( socket, F_SETFL, flags ) < 0 )
 		{ 
+			(void) close( socket );
 			Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (sync -> async) (%s)\n",
 				this, strerror( errno ) );
 		} 
@@ -142,6 +113,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 
 				if( result < 0 && errno != EINTR )
 				{
+					(void) close( socket );
 					Exception::raise( "Connection::Connection( \"%s\" ) select() failed (%s)",
 						destStr, strerror( errno ) );
 				} 
@@ -152,10 +124,9 @@ Connection :: Connection ( const char *destStr, bool secure )
 					int optval = 0;
 					if( getsockopt( socket, SOL_SOCKET, SO_ERROR, (void *)(&optval), &optlen ) < 0 )
 					{ 
-# ifdef TRACE
+						(void) close( socket );
 						Exception::raise( "Connection::Connection( \"%s\" ) getsockopt() failed (%s)",
 							destStr, strerror( errno ) );
-# endif // TRACE
 					} 
 					// check the value returned... 
 					if( optval )
@@ -166,6 +137,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 # endif // TRACE
 						if( optval == 61 )
 						{
+							(void) close( socket );
 							Exception::raise( "Connection::Connection( \"%s\" ) server down?",
 								destStr, strerror( errno ) );
 						}
@@ -177,7 +149,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 # ifdef TRACE
 						Log::log( "Connection::Connection( \"%s\" ) select() timed out", destStr );
 # endif // TRACE
-//						(void) close( socket );
+						(void) close( socket );
 						continue;
 					} 
 				}
@@ -199,6 +171,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 	int flags;
 	if( (flags = fcntl( socket, F_GETFL, NULL) ) < 0 )
 	{ 
+		(void) close( socket );
 		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
 			destStr, strerror( errno ) );
 	}
@@ -207,6 +180,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 
 	if( fcntl( socket, F_SETFL, flags ) < 0 )
 	{ 
+		(void) close( socket );
 		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n",
 			destStr, strerror( errno ) );
 	} 
@@ -215,33 +189,24 @@ Connection :: Connection ( const char *destStr, bool secure )
 	{
 		if( !(ssl = SSL_new( Connection::ssl_ctx )) )
 		{
-//			(void) close( socket );
-			Connection::connectionMutex.unlock();
+			(void) close( socket );
 			Exception::raise( "Connection::Connection( %s ) SSL_new() failed (%s)", destStr, SSL_error() );
 		}
 
 		if( !SSL_set_fd( ssl, socket ) )
 		{
-//			(void) close( socket );
-			Connection::connectionMutex.unlock();
+			(void) close( socket );
 			Exception::raise( "Connection::Connection( %s ) SSL_set_fd() failed (%s)", destStr, SSL_error() );
 		}
-
-		SSL_set_connect_state( ssl );
 
 		int SSL_connected;
 		if( (SSL_connected = SSL_connect( ssl )) <= 0 ) 
 		{
-//			(void) close( socket );
-			Connection::connectionMutex.unlock();
+			(void) close( socket );
 			Exception::raise( "Connection::Connection( %s ) SSL_connect() failed (%s) [%d]",
 				destStr, SSL_connected == -1 ? "out of resource?" : SSL_error(), SSL_connected );
 		}
 	}
-
-	Connection::connections[ Thread::tid() ] = this;
-
-	Connection::connectionMutex.unlock();
 
 # if TRACE
 	Log::log( "Connection::Connection( %s ) ssl=<%p>", destStr, ssl );
@@ -277,9 +242,7 @@ ssize_t
 Connection :: write( void *data, size_t len )
 {
 	if( secure )
-	{
 		return( SSL_write( ssl, data, (int) len ) );
-	}
 	return( send( socket, data, len, 0 ) );
 } 
 
@@ -308,22 +271,5 @@ Connection :: ~Connection ()
 # endif // TRACE
 		(void) close( socket );
 	}
-	Connection::connectionMutex.lock();
-	string tid = Thread::tid();
-	if( Connection::connections.erase( tid ) == 0 )
-	{
-		Connection::connectionMutex.unlock();
-		Exception::raise( "Connection::~Connection()  Connection::connections.erase( %s ) failed",
-			tid.c_str() ); 
-	}
-	if( Connection::connections.size() == 0 )
-	{
-		SSL_CTX_free( Connection::ssl_ctx );
-		Connection::ssl_ctx = NULL;
-	}
-# if TRACE
-	Log::log( "Connection::~Connection() connections.size()=%d", Connection::connections.size() );
-# endif // TRACE
-	Connection::connectionMutex.unlock();
 }
 

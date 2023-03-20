@@ -40,7 +40,7 @@ SessionContext :: ~SessionContext()
 # if TRACE
 	Log::log( "SessionContext::~SessionContext()" );
 # endif // TRACE
-	if( service->isSecure() )
+	if( service->isSecure() && clientSSL )
 	{
 # ifdef TRACE
 		Log::log( "SessionContext::~SessionContext: SSL_shutdown( %p )", clientSSL );

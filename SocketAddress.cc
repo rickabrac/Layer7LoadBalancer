@@ -61,12 +61,14 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 					struct hostent *host = gethostbyname( hostStr );
 					if( host == NULL )
 					{
+						free( addrBuf );
 						SocketAddress::hostMutex.unlock();
 						Exception::raise( "SocketAddress::SocketAddress( '%s' ) gethostbyname() failed (%s)",
 							addrStr, strerror( errno ) );
 					}
 					if( host->h_addr_list[ 0 ] == NULL )
 					{
+						free( addrBuf );
 						SocketAddress::hostMutex.unlock();
 						Exception::raise( "SocketAddress::SocketAddress( '%s' ) host->h_addr_list[ 0 ] == NULL",
 							addrStr );
@@ -89,6 +91,8 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 			// address string must contain only port number 
 			if( !*c || !isdigit( *addrBuf ) )
 			{
+				free( addrBuf );
+				SocketAddress::hostMutex.unlock();
 				Exception::raise( "SocketAddress::SocketAddress( '%s' ) listenStr is invalid",
 					addrStr ); 
 			}
@@ -96,7 +100,10 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 			portStr = addrBuf;
 		}
 		else
+		{
+			free( addrBuf );
 			Exception::raise( "SocketAddress::SocketAddress( '%s' ) pipes not supported", addrStr );
+		}	
 
 		// portStr should now point to port number
 		sockaddr_in.sin_addr = in_addr;
@@ -106,6 +113,7 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 			Exception::raise( "SocketAddress::SocketAddress( '%s' ) gethostbyname() failed (%s)",
 				addrStr, strerror( errno ) );
 		}
+
 		free( addrBuf );
 	}
 # if TRACE

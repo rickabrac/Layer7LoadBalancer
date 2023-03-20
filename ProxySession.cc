@@ -24,7 +24,8 @@
 
 // # define TRACE    1
 
-ProxySessionContext :: ProxySessionContext(
+ProxySessionContext :: ProxySessionContext
+(
 	Service *service,
 	int clientSocket,
 	SSL *clientSSL,
@@ -35,7 +36,7 @@ ProxySessionContext :: ProxySessionContext(
 	const char *protocolAttributeSeparator,
 	const char *protocolEndAttribute,
 	const char *protocolEndHeader
-) : SessionContext( service, clientSocket, clientSSL ) //, protocolSessionAttribute )
+) : SessionContext( service, clientSocket, clientSSL )
 {
 # if TRACE
 	Log::log( "ProxySessionContext::ProxySessionContext()" );
@@ -59,9 +60,9 @@ ProxySessionContext :: ~ProxySessionContext()
 # if TRACE
 	Log::log( "ProxySessionContext::~ProxySessionContext()" );
 # endif // TRACE
-	if( buf != nullptr )
+	if( buf ) 
 		free( buf );
-	if( proxy != nullptr )
+	if( proxy ) 
 		delete( proxy );
 }
 
@@ -72,7 +73,7 @@ ProxySession :: ProxySession( ProxySessionContext *context ) : Session( context 
 # endif // TRACE
 }
 
-ProxySession :: ~ProxySession ()
+ProxySession :: ~ProxySession()
 {
 # if TRACE
 	Log::log( "ProxySession::~ProxySession()" );
@@ -80,10 +81,10 @@ ProxySession :: ~ProxySession ()
 }
 
 void
-ProxySession :: _main ( ProxySessionContext *context )
+ProxySession :: _main( ProxySessionContext *context )
 {
 # if TRACE
-	Log::log( "ProxySession::_main( %p ) RUN", context );
+	Log::log( "ProxySession::_main[ %p ] RUN", context );
 # endif // TRACE
 	try
 	{
@@ -91,14 +92,13 @@ ProxySession :: _main ( ProxySessionContext *context )
 	}
 	catch( const char *error )
 	{
-		Log::log( "ProxySession[ %p ]::_main: Connection() failed", context );
+		Log::log( "ProxySession[ %p ]::_main: Connection() failed (%s)", context, error );
 		delete( context );
 		return;
 	}
 
 	ssize_t pending = 0;
 	int loops = 0; 
-
 
 	for( ;; )
 	{
@@ -107,13 +107,14 @@ ProxySession :: _main ( ProxySessionContext *context )
 		struct timeval timeout;
 		bzero( &timeout, sizeof( timeout ) );
 		timeout.tv_sec = 0; 
-		timeout.tv_usec = 100000;
+		timeout.tv_usec = 10000;
 		int selected;
 
 		FD_ZERO( &fdset );
 		FD_ZERO( &empty_fdset );
 		FD_SET( context->clientSocket, &fdset );
 		FD_SET( context->proxy->socket, &fdset );
+
 		try
 		{
 			if( pending )
@@ -124,13 +125,32 @@ ProxySession :: _main ( ProxySessionContext *context )
 # endif // TRACE
 			if( (selected = select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout )) >= 0 )
 			{
-				if( selected == 0 && loops > 0 )
+				if( selected == 0 )
 				{
 # if TRACE
-					Log::log( "ProxySession[ %p ]::_main: *IDLE*", context );
+//					Log::log( "SELECT() RETURNED selected=%d errno=%d (%s)", selected, errno, strerror( errno ) );
 # endif // TRACE
-					++loops;
-					continue;
+
+					if( loops > 0 )
+					{
+# if TRACE
+						if( loops % 20 == 0 )
+							Log::log( "ProxySession[ %p ]::_main: *IDLE*", context );
+# endif // TRACE
+						++loops;
+						continue;
+					}
+					else
+					{
+						if( context->clientSSL )
+						{
+							SSL_shutdown( context->clientSSL );
+//							SSL_free( context->clientSSL );	// crashes when SSL_free() is called here
+							context->clientSSL = nullptr;
+						}
+						delete( context );
+						return;
+					}
 				}
 
 				size_t loopReads = 0;
@@ -146,6 +166,7 @@ ProxySession :: _main ( ProxySessionContext *context )
 						len = (int) SSL_read( context->clientSSL, context->buf, (int) context->bufLen );
 					else
 						len = (int) recv( context->clientSocket, context->buf, context->bufLen, 0 );
+
 					if( len > 0 )
 					{
 						// send to server 
@@ -199,21 +220,22 @@ ProxySession :: _main ( ProxySessionContext *context )
 							Log::log( "ProxySession[ %p ]::_main: BUFLEN=%d", context, context->service->bufLen ); 
 # endif // TRACE
 						}
-						else
-							context->service->bufLenMutex.unlock();
 					}
 					else if( errno != EAGAIN && len < 0 )
 					{
+						SSL_shutdown( context->clientSSL );
+//						SSL_free( context->clientSSL );	// crashes if SSL_free() called here
+						context->clientSSL = nullptr;
 # if TRACE
 						if( context->clientSSL )
 						{
-							Log::log( "ProxySession[ %p ]::_main: SSL_read() failed [%d] (%s)",
-								context, errno, ERR_error_string( ERR_get_error(), NULL ) );
+							Log::log( "ProxySession[ %p ]::_main: SSL_read() failed (%s)",
+								context, ERR_error_string( ERR_get_error(), NULL ) ); 
 						}
 						else
 						{
 							Log::log( "ProxySession[ %p ]::_main: recv() failed [%d] (%s)",
-								context, errno, ERR_error_string( ERR_get_error(), NULL ) );
+								context, errno, strerror( errno ) ); 
 						}
 # endif // TRACE
 						delete( context );
@@ -225,6 +247,7 @@ ProxySession :: _main ( ProxySessionContext *context )
 				{
 					// server has data ready
 					bzero( context->buf, context->bufLen );
+
 					// receive from server
 					if( (pending = context->proxy->read( context->buf, context->bufLen )) > 0 )
 					{
@@ -329,6 +352,8 @@ ProxySession :: _main ( ProxySessionContext *context )
 					else if( errno != EAGAIN && pending <= 0 )
 					{
 # if TRACE
+						Log::log( "ProxySession[ % ]::_main: END SESSION (pending <= 0)" );
+
 						if( context->clientSSL )
 						{
 							Log::log( "ProxySession[ %p ]::_main: SSL_read() failed [%d] (%s)",
@@ -344,20 +369,31 @@ ProxySession :: _main ( ProxySessionContext *context )
 						return;
 					}
 				}
+
 				if( loopReads == 0 )
 				{
+					if( errno == 60 )
+					{
 # if TRACE
-					Log::log( "loopReads == 0" );
+						Log::log( "ProxySession[ %p ]._main: ERRNO == 60", context );
 # endif // TRACE
-					usleep( 10000 );
+						delete( context );	
+						return;
+					}
+# if TRACE
+					Log::log( "loopReads == 0 errno=%d", errno );
+# endif // TRACE
+					usleep( 1000 );
 				}
 			}
 			else
 			{
+# if TRACE
 				Log::log( "ProxySession[ %p ]::_main: select() failed (%s) [%d]", context, strerror( errno ), errno );
-				// ### EXPERIMENT TO FIX CRASH ON TELNET CONNECTION ###
+# endif // TRACE
+				SSL_shutdown( context->clientSSL );
+//				SSL_free( context->clientSSL );
 				context->clientSSL = nullptr;
-				context->clientSocket = -1;
 				delete( context );
 				return;
 			}
