@@ -24,15 +24,12 @@ class Exception
 
 	static void raise( const char *fmt, ... )
 	{
-		static mutex mutex;
-		mutex.lock();
 		va_list args;
 		va_start( args, fmt );
 		static char buf[ 8192 ];
 		vsprintf( buf, fmt, args );
 		va_end( args );
 		throw( (const char *) buf );
-		mutex.unlock();
 	}
 };
 

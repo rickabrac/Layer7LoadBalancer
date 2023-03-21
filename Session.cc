@@ -42,32 +42,27 @@ SessionContext :: ~SessionContext()
 # endif // TRACE
 	if( service->isSecure() && clientSSL )
 	{
-# ifdef TRACE
-		Log::log( "SessionContext::~SessionContext: SSL_shutdown( %p )", clientSSL );
-# endif // TRACE
 		SSL_shutdown( clientSSL );
-# ifdef TRACE
-		Log::log( "SessionContext::~SessionContext: SSL_free( %p )", clientSSL );
-# endif // TRACE
 		SSL_free( clientSSL );
 	}
 	if( clientSocket != -1  )
 	{
-# ifdef TRACE
-		Log::log( "SessionContext::~SessionContext: close( %d )", clientSocket );
-# endif // TRACE
 		(void) close( clientSocket );
 	}
 	if( session )
+	{
+		session->context->service->notifyEndOfSession( this );
 		delete( session );
+	}
 }
 
-Session :: Session( SessionContext *context ) : Thread( context ) 
+Session :: Session( SessionContext *context ) : Thread( context )
 {
 # if TRACE
 	Log::log( "Session::Session()" );
 # endif // TRACE
 	context->session = this;
+	this->context = context;
 }
 
 Session :: ~Session()

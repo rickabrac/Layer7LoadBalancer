@@ -49,7 +49,6 @@ class Thread
 
 	~Thread()
 	{
-//		Log::log( "Thread::~Thread: delete( t )" );
 		delete( t );
 	}
 
@@ -75,13 +74,6 @@ class Thread
 		std::chrono::duration<int64_t, std::ratio<1,1000>> duration( millliseconds );
 		std::this_thread::sleep_for( duration );
 	}
-
-	// static string tid()
-	// {
-	// 	std::ostringstream ss;
-	// 	ss << std::this_thread::get_id();
-	// 	return ss.str();
-	// }
 
 	ThreadContext *context;
 

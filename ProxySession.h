@@ -58,7 +58,7 @@ class ProxySessionContext : public SessionContext
   friend class ProxySession;
 };
 
-class ProxySession : public Session 
+class ProxySession : public Session
 {
 	public:
 

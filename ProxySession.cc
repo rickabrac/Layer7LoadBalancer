@@ -38,6 +38,7 @@ ProxySessionContext :: ProxySessionContext
 	const char *protocolEndHeader
 ) : SessionContext( service, clientSocket, clientSSL )
 {
+
 # if TRACE
 	Log::log( "ProxySessionContext::ProxySessionContext()" );
 # endif // TRACE
@@ -86,6 +87,7 @@ ProxySession :: _main( ProxySessionContext *context )
 # if TRACE
 	Log::log( "ProxySession::_main[ %p ] RUN", context );
 # endif // TRACE
+
 	try
 	{
 		context->proxy = new Connection( context->destStr, context->useTLS );
@@ -130,7 +132,6 @@ ProxySession :: _main( ProxySessionContext *context )
 # if TRACE
 //					Log::log( "SELECT() RETURNED selected=%d errno=%d (%s)", selected, errno, strerror( errno ) );
 # endif // TRACE
-
 					if( loops > 0 )
 					{
 # if TRACE
@@ -144,8 +145,6 @@ ProxySession :: _main( ProxySessionContext *context )
 					{
 						if( context->clientSSL )
 						{
-//							SSL_shutdown( context->clientSSL );
-//							SSL_free( context->clientSSL );	// crashes when SSL_free() is called here
 							context->clientSSL = nullptr;
 						}
 						delete( context );
@@ -177,8 +176,7 @@ ProxySession :: _main( ProxySessionContext *context )
  						context->buf[ len ] = '\0';
 						Log::log( "SENDING %d BYTES TO SERVER [\n%s]", len, context->buf );
 # endif // TRACE
-						while( len
-							&& (sent = context->proxy->write( ((char *) context->buf) + total, len )) <= len )
+						while( len && (sent = context->proxy->write( ((char *) context->buf) + total, len )) <= len )
 						{
 							if( sent < 0 )
 							{
@@ -224,26 +222,21 @@ ProxySession :: _main( ProxySessionContext *context )
 					else if( errno != EAGAIN && len < 0 )
 					{
 						SSL_shutdown( context->clientSSL );
-//						SSL_free( context->clientSSL );	// crashes if SSL_free() called here
 						context->clientSSL = nullptr;
 # if TRACE
 						if( context->clientSSL )
-						{
 							Log::log( "ProxySession[ %p ]::_main: SSL_read() failed (%s)",
 								context, ERR_error_string( ERR_get_error(), NULL ) ); 
-						}
 						else
-						{
 							Log::log( "ProxySession[ %p ]::_main: recv() failed [%d] (%s)",
 								context, errno, strerror( errno ) ); 
-						}
 # endif // TRACE
 						delete( context );
 						return;
 					}
 				}
 
-				if( FD_ISSET( context->proxy->socket, &fdset ) || context->proxy->pending() ) 
+				if( FD_ISSET( context->proxy->socket, &fdset ) || context->proxy->pending() )
 				{
 					// server has data ready
 					bzero( context->buf, context->bufLen );
@@ -263,7 +256,7 @@ ProxySession :: _main( ProxySessionContext *context )
 							sent = SSL_write( context->clientSSL, context->buf + total, (int) pending );
 						else
 							sent = send( context->clientSocket, context->buf + total, (int) pending, 0 );
-						while( pending && sent <= pending ) 
+						while( pending && sent <= pending )
 						{
 							if( sent < 0 )
 							{
@@ -289,7 +282,9 @@ ProxySession :: _main( ProxySessionContext *context )
 							}
 							if( pending == 0 )
 							{
+# ifdef TRACE
 								Log::log( "USLEEP( 1000 )" );
+# endif // TRACE
 								usleep( 1000 );
 							}
 							pending -= sent;
@@ -328,7 +323,7 @@ ProxySession :: _main( ProxySessionContext *context )
 										Log::log( "ATTRIBUTE [%s: %s]", name, c2 );
 # endif // TRACE
 										string value( c2 );
-										proxySessionContext->service->notifySessionProtocolAttribute( &value );
+										// proxySessionContext->service->notifySessionProtocolAttribute( &value );
 										break;
 									}
 								}
@@ -355,15 +350,11 @@ ProxySession :: _main( ProxySessionContext *context )
 						Log::log( "ProxySession[ % ]::_main: END SESSION (pending <= 0)" );
 
 						if( context->clientSSL )
-						{
 							Log::log( "ProxySession[ %p ]::_main: SSL_read() failed [%d] (%s)",
 								context, errno, ERR_error_string( ERR_get_error(), NULL ) );
-						}
 						else
-						{
 							Log::log( "ProxySession[ %p ]._main: recv() failed [%d] (%s)",
 								context, errno, strerror( errno ) );
-						}
 # endif // TRACE
 						delete( context );
 						return;

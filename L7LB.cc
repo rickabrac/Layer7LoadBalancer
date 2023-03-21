@@ -45,8 +45,8 @@ class L7LBServiceContext: public ServiceContext
 {
 	public:
 
-		L7LBServiceContext( ServiceConfig *serviceConfig ) :
-			ServiceContext( serviceConfig->listenStr.c_str(), serviceConfig->keyPath.c_str(), serviceConfig->certPath.c_str() )
+		L7LBServiceContext( ServiceConfig *serviceConfig )
+			: ServiceContext( serviceConfig->listenStr.c_str(), serviceConfig->keyPath.c_str(), serviceConfig->certPath.c_str() )
 		{
 			this->sessionConfigs = serviceConfig->sessionConfigs;
 			this->sessionCookie = serviceConfig->sessionCookie.c_str();
@@ -60,7 +60,7 @@ class L7LBServiceContext: public ServiceContext
 	friend class L7LBService;
 };
 
-class L7LBService : public Service 
+class L7LBService : public Service
 {
 	public:
 
@@ -108,6 +108,7 @@ int main( int argc, char **argv )
 		cout << "Usage: " << argv[ 0 ] << " config_file_path" << endl;	
 		::exit( -1 );
 	}
+
 	L7LBConfig::config = new L7LBConfig( argv[ 1 ] );
 	try
 	{
@@ -118,7 +119,9 @@ int main( int argc, char **argv )
 		Log::log( "%s", error );
 		::exit( -1 );
 	}
+
 	Event done;
+
 	for( auto it = L7LBConfig::config->serviceConfigs.begin(); it != L7LBConfig::config->serviceConfigs.end(); it++ )
 	{
 		ServiceConfig *serviceConfig = *it;

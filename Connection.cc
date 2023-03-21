@@ -30,13 +30,14 @@ using namespace std;
 SSL_CTX * Connection :: ssl_ctx = nullptr;
 mutex Connection :: mutex;
 
-Connection :: Connection ( const char *destStr, bool secure )
+Connection :: Connection ( const char *destStr, bool useTLS )
 {
-	this->secure = secure;
+	sockAddr = new SocketAddress( destStr );
+	this->useTLS = useTLS;
 	
 	Connection::mutex.lock();
 
-	if( secure && !Connection::ssl_ctx )
+	if( useTLS && !Connection::ssl_ctx )
 	{
   		OpenSSL_add_all_algorithms();
   		ERR_load_crypto_strings();
@@ -44,39 +45,38 @@ Connection :: Connection ( const char *destStr, bool secure )
 
   		if( SSL_library_init() < 0 )
 		{
-			Exception::raise( "Connection::Connection( \"%s\" ) SSL_library_init() failed (%s)",
-				destStr, SSL_error() );
+			Connection::mutex.unlock();
+			Exception::raise( "Connection::Connection( \"%s\" ) SSL_library_init() failed (%s)", destStr, SSL_error() );
 		}
 
 		if( (Connection::ssl_ctx = SSL_CTX_new( SSLv23_client_method() )) == NULL )
 		{
-			Connection::mutex.lock();
-			Exception::raise( "Connection::Connection( \"%s\" ) SSL_CTX_new() failed (%s)",
-				destStr, SSL_error() );
+			Connection::mutex.unlock();
+			Exception::raise( "Connection::Connection( \"%s\" ) SSL_CTX_new() failed (%s)", destStr, SSL_error() );
 		}
 
-		SSL_CTX_set_options( Connection::ssl_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1
-			| SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION );
+		SSL_CTX_set_options( Connection::ssl_ctx,
+			SSL_OP_NO_SSLv2 |
+			SSL_OP_NO_SSLv3 |
+			SSL_OP_NO_TLSv1 |
+			SSL_OP_NO_TLSv1_1 |
+			SSL_OP_NO_COMPRESSION
+		);
 	}
 
 	Connection::mutex.unlock();
 	
-	sockAddr = new SocketAddress( destStr );
-
 	for( ;; )
 	{
 		socket = ::socket( AF_INET, SOCK_STREAM, 0 );
 		if( socket == -1 )
-		{
 			Exception::raise( "Connection::Connection( \"%s\" ) socket() failed (%s)",
 				destStr, strerror( errno ) );
-		}
 
 		int set = 1;
 		setsockopt( socket, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof( int ) );
 
 		// connect operation must be asynchronous to handle failures
-
 		int flags;
 		if( (flags = fcntl( socket, F_GETFL, NULL) ) < 0 )
 		{ 
@@ -98,7 +98,6 @@ Connection :: Connection ( const char *destStr, bool secure )
 # ifdef TRACE
 			Log::log( "Connection::Connection( \"%s\" ) connect() failed (%s)", destStr, strerror( errno ) );
 # endif // TRACE
-
 			if( errno == EINPROGRESS )
 			{
 				fd_set fdset, empty_fdset;
@@ -119,6 +118,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 				} 
 				else if( result > 0 )
 				{
+
 					// socket selected for write 
 					socklen_t optlen = sizeof( int );
 					int optval = 0;
@@ -162,7 +162,6 @@ Connection :: Connection ( const char *destStr, bool secure )
 # endif // TRACE
 			} 
 		}
-
 	 	break;
 	}
 
@@ -185,7 +184,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 			destStr, strerror( errno ) );
 	} 
 
-	if( secure )
+	if( useTLS )
 	{
 		if( !(ssl = SSL_new( Connection::ssl_ctx )) )
 		{
@@ -200,7 +199,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 		}
 
 		int SSL_connected;
-		if( (SSL_connected = SSL_connect( ssl )) <= 0 ) 
+		if( (SSL_connected = SSL_connect( ssl )) <= 0 )
 		{
 			(void) close( socket );
 			Exception::raise( "Connection::Connection( %s ) SSL_connect() failed (%s) [%d]",
@@ -216,7 +215,7 @@ Connection :: Connection ( const char *destStr, bool secure )
 ssize_t
 Connection :: pending( void )
 {
-	if( secure )
+	if( useTLS )
 		return SSL_pending( ssl );
 	char c;
 	return peek( &c, 1 );
@@ -225,15 +224,14 @@ Connection :: pending( void )
 ssize_t
 Connection :: peek( void *buf, size_t len )
 {
-	if( secure )
+	if( useTLS )
 		return( SSL_peek( ssl, buf, (int) len ) );
 	return( recv( socket, buf, len, MSG_PEEK ) );
 } 
 
 ssize_t
-Connection :: read( void *buf, size_t len )
-{
-	if( secure )
+Connection :: read( void *buf, size_t len ) {
+	if( useTLS )
 		return( SSL_read( ssl, buf, (int) len ) );
 	return( recv( socket, buf, len, 0 ) );
 } 
@@ -241,7 +239,7 @@ Connection :: read( void *buf, size_t len )
 ssize_t
 Connection :: write( void *data, size_t len )
 {
-	if( secure )
+	if( useTLS )
 		return( SSL_write( ssl, data, (int) len ) );
 	return( send( socket, data, len, 0 ) );
 } 
@@ -253,22 +251,13 @@ Connection :: ~Connection ()
 # endif // TRACE
 	if( ssl )
 	{
-# ifdef TRACE
-		Log::log( "Connection::~Connection: SSL_shutdown( %p )", ssl );
-# endif // TRACE
 		SSL_shutdown( ssl );
-# ifdef TRACE
-		Log::log( "Connection::~Connection: SSL_free( %p )", ssl );
-# endif // TRACE
 		SSL_free( ssl );
 	}
 	if( sockAddr )
 		delete( sockAddr );
 	if( socket > -1 )
 	{
-# ifdef TRACE
-		Log::log( "Connection::~Connection: close( %d )", socket );
-# endif // TRACE
 		(void) close( socket );
 	}
 }

@@ -17,7 +17,7 @@
 
 # include "Service.h"
 # include "Exception.h"
-# include "SocketAddress.h"
+# include "Connection.h"
 # include "Event.h"
 # include "Log.h"
 # include <openssl/ssl.h>
@@ -48,9 +48,50 @@ ServiceContext :: ~ServiceContext()
 		delete( sockAddr );
 }
 
-SSL_CTX *ServiceContext :: ssl_ctx = NULL;
+SSL_CTX *ServiceContext :: get_SSL_CTX( void )
+{
+	SSL_CTX *ssl_ctx = SSL_CTX_new( SSLv23_server_method() );
+
+	if( !ssl_ctx ) 
+		Exception::raise( "Service::get_SSL_CTX: SSL_CTX_new() failed: %s",
+			ERR_error_string( ERR_get_error(), NULL ) );
+
+	SSL_CTX_set_options
+	(
+		ssl_ctx,
+		SSL_OP_NO_SSLv2 |
+		SSL_OP_NO_SSLv3 |
+		SSL_OP_NO_TLSv1 |
+		SSL_OP_NO_TLSv1_1 |
+		SSL_OP_NO_COMPRESSION
+	);
+
+	if( SSL_CTX_use_certificate_file( ssl_ctx, certPath, SSL_FILETYPE_PEM ) != 1 )
+	{
+		Exception::raise( "SSL_CTX_use_certificate_file() failed: %s",
+			ERR_error_string( ERR_get_error(), NULL ) );
+	}
+
+	if( SSL_CTX_use_PrivateKey_file( ssl_ctx, keyPath, SSL_FILETYPE_PEM ) != 1 )
+	{
+		Exception::raise( "SSL_CTX_use_PrivateKey_file() failed: %s",
+			ERR_error_string( ERR_get_error(), NULL ) );
+	}
+
+	if( trustPath != nullptr && SSL_CTX_load_verify_locations( ssl_ctx, NULL, trustPath) <= 0 )
+	{
+		Exception::raise( "SSL_CTX_load_verify_locations() failed: %s",
+			ERR_error_string( ERR_get_error(), NULL ) );
+	}
+
+	return( ssl_ctx );
+}
+
 size_t Service :: bufLen = 4096; // 32768;
 mutex Service :: bufLenMutex;
+SSL_CTX * Service :: ssl_ctx = nullptr;
+mutex Service :: ssl_ctx_mutex;
+set< SessionContext * > Service :: sslSessions;
 
 Service :: Service( ServiceContext *context ) : Thread( context )
 {
@@ -59,40 +100,21 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 # endif // TRACE
 	this->context = context;
 	context->service = this;
+
 	try
 	{
-		if( context->service->isSecure() && !ServiceContext::ssl_ctx )
+		if( context->service->isSecure() )
 		{
-			OpenSSL_add_all_algorithms();
-
-			SSL_load_error_strings();	
-
-			if( SSL_library_init() < 0 )
-				Exception::raise( "SSL_library_init() failed: %s", ERR_error_string( ERR_get_error(), NULL ) );
-
-			if( !(ServiceContext::ssl_ctx = SSL_CTX_new( SSLv23_server_method() )) )
-				Exception::raise( "SSL_CTX_new() failed: %s", ERR_error_string( ERR_get_error(), NULL ) );
-
-			SSL_CTX_set_options( ServiceContext::ssl_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1
-				| SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION ); // SSL_OP_NO_SSLv2 );
-
-			if( SSL_CTX_use_certificate_file( ServiceContext::ssl_ctx, context->certPath, SSL_FILETYPE_PEM ) != 1 )
+			Service::ssl_ctx_mutex.lock();
+			if( !Service::ssl_ctx )
 			{
-				Exception::raise( "SSL_CTX_use_certificate_file() failed: %s",
-					ERR_error_string( ERR_get_error(), NULL ) );
+				OpenSSL_add_all_algorithms();
+				SSL_load_error_strings();	
+				if( SSL_library_init() < 0 )
+					Exception::raise( "SSL_library_init() failed: %s", ERR_error_string( ERR_get_error(), NULL ) );
+				Service::ssl_ctx = context->get_SSL_CTX();
 			}
-
-			if( SSL_CTX_use_PrivateKey_file( ServiceContext::ssl_ctx, context->keyPath, SSL_FILETYPE_PEM ) != 1 )
-			{
-				Exception::raise( "SSL_CTX_use_PrivateKey_file() failed: %s",
-					ERR_error_string( ERR_get_error(), NULL ) );
-			}
-
-			if( context->trustPath != nullptr && SSL_CTX_load_verify_locations( ServiceContext::ssl_ctx, NULL, context->trustPath) <= 0 )
-			{
-				Exception::raise( "SSL_CTX_load_verify_locations() failed: %s",
-					ERR_error_string( ERR_get_error(), NULL ) );
-			}
+			Service::ssl_ctx_mutex.unlock();
 		}
 
 		context->socket = socket( AF_INET, SOCK_STREAM, 0 );
@@ -109,15 +131,10 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 		// set SO_REUSEADDR so bind() doesn't fail after restart
 		int optval = 1;
 		if( setsockopt( context->socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof( optval ) ) < 0 )
-		{
 			Exception::raise( "setsockopt( SO_REUSEADDR ) on listen socket failed (%s)", strerror( errno ) );
-		}
 
-		if( ::bind( context->socket, (struct sockaddr *) &context->sockAddr->sockaddr_in,
-			sizeof( struct sockaddr_in ) ) != 0 )
-		{
+		if( ::bind( context->socket, (struct sockaddr *) &context->sockAddr->sockaddr_in, sizeof( struct sockaddr_in ) ) != 0 )
 			Exception::raise( "bind() failed (%s) running as superuser?", strerror( errno ) );
-		}
 
 		if( listen( context->socket, -1 ) != 0 )
 			Exception::raise( "listen() failed (%s)", strerror( errno ) );
@@ -134,24 +151,39 @@ Service :: ~Service()
 # if TRACE
 	Log::log( "Service::~Service()" );
 # endif // TRACE
-
-	if( ServiceContext::ssl_ctx )
-		SSL_CTX_free( ServiceContext::ssl_ctx );
-
 	if( context->socket > -1 )
 		(void) close( context->socket );
 }
 
-bool Service :: isSecure()
+bool
+Service :: isSecure()
 {
 	return( context->certPath && *context->certPath && context->keyPath && *context->keyPath );
 }
 
 void
-Service :: notifySessionProtocolAttribute( string *value ) 
+Service :: notifySessionProtocolAttribute( string *value )
 {
-	if( value ) return; // avoid unused variable warning
+	if( value ) return;
 	return;
+}
+
+void
+Service :: notifyEndOfSession( SessionContext *context )
+{
+	if( !context->service->isSecure() )
+	 	return;
+
+	Service::ssl_ctx_mutex.lock();
+
+	Service::sslSessions.erase( context );
+
+	if( Service::ssl_ctx && Service::sslSessions.size() == 0 )
+	{
+		SSL_CTX_free( Service::ssl_ctx );
+		Service::ssl_ctx = context->service->context->get_SSL_CTX();
+	}
+	Service::ssl_ctx_mutex.unlock();
 }
 
 void Service :: _main( ServiceContext *context )
@@ -159,6 +191,7 @@ void Service :: _main( ServiceContext *context )
 # if TRACE
 	Log::log( "Service::_main()" );
 # endif // TRACE
+
 	for( ;; )
 	{
 		try
@@ -166,9 +199,9 @@ void Service :: _main( ServiceContext *context )
 # if TRACE
 			Log::log( "Service::_main: accept()..." );
 # endif // TRACE
-
 			int clientSocket;
 			socklen_t socklen = sizeof( struct sockaddr_in );
+
 			if( (clientSocket = accept( context->socket, (struct sockaddr *) &context->sockAddr->sockaddr_in, &socklen )) < 0 )
 			{
 				Exception::raise( "accept() failed (%s) [%d]", strerror( errno ), errno );
@@ -180,27 +213,28 @@ void Service :: _main( ServiceContext *context )
 			struct pollfd server_poll;
 			server_poll.fd = context->socket;
 			server_poll.events = POLLIN;
-
 			SSL *clientSSL = nullptr;
 
 			if( context->service->isSecure() )
 			{
-				if( (clientSSL = SSL_new( ServiceContext::ssl_ctx )) == NULL )
-				{
+
+				Service::ssl_ctx_mutex.lock();
+
+				if( !Service::ssl_ctx )
+					Service::ssl_ctx = context->get_SSL_CTX();
+
+				if( (clientSSL = SSL_new( Service::ssl_ctx )) == NULL )
 					Exception::raise( "SSL_new() failed (%s)", ERR_error_string( ERR_get_error(), NULL ) );
-				}
 # if TRACE
 				Log::log( "Service::_main: clientSocket=%d clientSSL=<%p>", clientSocket, clientSSL );
 # endif // TRACE
+				Service::ssl_ctx_mutex.unlock();
 
 				if( !SSL_set_fd( clientSSL, clientSocket ) )
-				{
-					Exception::raise( "SSL_set_fd() failed (%s)",
-						ERR_error_string( ERR_get_error(), NULL ) ); 
-				}
+					Exception::raise( "SSL_set_fd() failed (%s)", ERR_error_string( ERR_get_error(), NULL ) ); 
 
 				int result = 0;
-				if( (result = SSL_accept( clientSSL )) < 0 ) 
+				if( (result = SSL_accept( clientSSL )) < 0 )
 				{
 					SSL_shutdown( clientSSL );
 					SSL_free( clientSSL );
@@ -208,16 +242,11 @@ void Service :: _main( ServiceContext *context )
 
 					int optval = 1;
 					if( setsockopt( context->socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof( optval ) ) < 0 )
-					{
 						Exception::raise( "setsockopt( SO_REUSEADDR ) on listen socket failed (%s)", strerror( errno ) );
-					}
 				}
 
 				if( result == 0 )
-				{
 					Exception::raise( "SSL_accept() == 0" );
-					return;
-				}
 			}
 # if TRACE
 			Log::log( "Service::_main: CALLING getSession( %d, <%p> )", clientSocket, clientSSL );
@@ -225,46 +254,19 @@ void Service :: _main( ServiceContext *context )
 
 			Session *session = context->service->getSession( clientSocket, clientSSL );
 
-			context->sessionMutex.lock();
-
-			if( context->sessions.size() == 0 )
-			{
-				SSL_CTX_free( ServiceContext::ssl_ctx );
-
-				if( !(ServiceContext::ssl_ctx = SSL_CTX_new( SSLv23_server_method() )) )
-					Exception::raise( "SSL_CTX_new() failed: %s", ERR_error_string( ERR_get_error(), NULL ) );
-
-				SSL_CTX_set_options( ServiceContext::ssl_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1
-					| SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION ); // SSL_OP_NO_SSLv2 );
-
-				if( SSL_CTX_use_certificate_file( ServiceContext::ssl_ctx, context->certPath, SSL_FILETYPE_PEM ) != 1 )
-				{
-					Exception::raise( "SSL_CTX_use_certificate_file() failed: %s",
-						ERR_error_string( ERR_get_error(), NULL ) );
-				}
-
-				if( SSL_CTX_use_PrivateKey_file( ServiceContext::ssl_ctx, context->keyPath, SSL_FILETYPE_PEM ) != 1 )
-				{
-					Exception::raise( "SSL_CTX_use_PrivateKey_file() failed: %s",
-						ERR_error_string( ERR_get_error(), NULL ) );
-				}
-
-				if( context->trustPath != nullptr && SSL_CTX_load_verify_locations( ServiceContext::ssl_ctx, NULL, context->trustPath) <= 0 )
-				{
-					Exception::raise( "SSL_CTX_load_verify_locations() failed: %s",
-						ERR_error_string( ERR_get_error(), NULL ) );
-				}
-			}
-
-			context->sessions.insert( session);
-
-			context->sessionMutex.unlock();
-
 			if( !session )
 				Exception::raise( "getSession() failed" );
 
+			if( context->service->isSecure() )
+			{
+				Service::ssl_ctx_mutex.lock();
+				Service::sslSessions.insert( session->context );
+				Service::ssl_ctx_mutex.unlock();
+			}
+
 			session->run();
 			session->detach();
+
 		}
 		catch( const char *error )
 		{
@@ -272,4 +274,3 @@ void Service :: _main( ServiceContext *context )
 		}
 	}
 }
-

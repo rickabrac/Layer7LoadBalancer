@@ -24,7 +24,7 @@
 
 using namespace std;
 
-class Connection 
+class Connection
 {
     public:
 
@@ -35,15 +35,14 @@ class Connection
 	ssize_t read( void *buf, size_t len );
 	ssize_t pending( void ); 
 	int socket;
+	static SSL_CTX *ssl_ctx;
 
     private:
 
 	SocketAddress *sockAddr = nullptr;
 	SSL *ssl = nullptr;
-	bool secure;
-
+	bool useTLS;
 	static mutex mutex;
-	static SSL_CTX *ssl_ctx;
 };
 
 # endif // _Connection_h_

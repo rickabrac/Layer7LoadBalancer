@@ -29,8 +29,7 @@ class ServiceContext : public ThreadContext
 {
     public:
 
-	ServiceContext
-	(
+	ServiceContext (
 		const char *listenStr,
 		const char *certPath = nullptr,
 		const char *keyPath = nullptr,
@@ -45,14 +44,10 @@ class ServiceContext : public ThreadContext
 	const char *certPath;
 	const char *trustPath;
 	const char *keyPath;
-
-    private:
-
 	SocketAddress *sockAddr;
-	static SSL_CTX *ssl_ctx;
 	int socket;
-	set< Session * > sessions;
-	mutex sessionMutex;
+	SSL_CTX *get_SSL_CTX( void ); 
+	// void notifyEndOfSession( SessionContext *sessionContext );
 
     friend class Service;
 };
@@ -74,8 +69,12 @@ class Service : public Thread
 	virtual Session *getSession( int clientSocket, SSL *clientSSL = nullptr ) = 0;
 	virtual void notifySessionProtocolAttribute( string *value );
 	bool isSecure( void );
+	void notifyEndOfSession( SessionContext *context );
 	static mutex bufLenMutex;
 	static size_t bufLen;
+	static SSL_CTX *ssl_ctx;
+	static mutex ssl_ctx_mutex;
+	static set< SessionContext * > sslSessions;
 
     friend class Session;
     friend class SessionContext;

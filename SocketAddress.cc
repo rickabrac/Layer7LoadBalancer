@@ -25,7 +25,7 @@
 map< string, struct in_addr * > SocketAddress :: hosts;
 mutex SocketAddress :: hostMutex;
 
-SocketAddress :: SocketAddress ( const char *addrStr ) 
+SocketAddress :: SocketAddress ( const char *addrStr )
 {
 	bzero( &sockaddr_in, sizeof( struct sockaddr_in ) );
 	sockaddr_in.sin_family = AF_INET;	// pipes not supported currently
@@ -42,6 +42,7 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 		char *portStr = NULL;
 		if( *c == ':' )
 		{
+
 			*c++ = '\0';
 			portStr = c;
 			char *hostStr = addrBuf;
@@ -56,7 +57,7 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 				hostname = hostStr;
 				SocketAddress::hostMutex.lock();
 				struct in_addr *_in_addr = hosts[ hostStr ]; 
-				if( !_in_addr ) 
+				if( !_in_addr )
 				{
 					struct hostent *host = gethostbyname( hostStr );
 					if( host == NULL )
@@ -110,6 +111,7 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 		sockaddr_in.sin_port = htons( atoi( portStr ) );
 		if( sockaddr_in.sin_port == 0 )
 		{
+			free( addrBuf );
 			Exception::raise( "SocketAddress::SocketAddress( '%s' ) gethostbyname() failed (%s)",
 				addrStr, strerror( errno ) );
 		}

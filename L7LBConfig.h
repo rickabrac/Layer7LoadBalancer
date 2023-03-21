@@ -46,7 +46,8 @@ class ServiceConfig
 		string trustPath,
 		string sessionCookie,
 		vector< SessionConfig * > *sessionConfigs )
-	{
+		{
+
 # if TRACE
 		cout << "ServiceConfig( \""
 			<< listenStr << "\", \""
@@ -92,9 +93,7 @@ class L7LBConfig
 				ss = nullptr;
 			}
 			if( !getline( *configFile, line ) )
-			{
 				return nullptr;
-			}
 			ss = new stringstream( line );
 		}
 		token = "";
@@ -107,31 +106,26 @@ class L7LBConfig
 				ss = nullptr;
 			}
 			if( !getline( *configFile, line ) )
-			{
 				return nullptr;
-			}
 			ss = new stringstream( line );
 			token = "";
 			(void) getline( *ss, token, ' ' );
 		}
 		size_t start = token.find_first_not_of( " \t" );
 		token = (start == std::string::npos) ? "" : token.substr( start );
+
 		return( new string( token.c_str() ) );
 	}
 
 	void parseFile( void )
 	{
 		if( !configFile->is_open())
-		{
 			Exception::raise( "%s not found", filePath );
-		}
 		ServiceConfig *serviceConfig;
 		try
 		{
 			while( (serviceConfig = parseServiceConfig()) )
-			{
 				serviceConfigs.push_back( serviceConfig );
-			}
 		}
 		catch( const char *error )
 		{
@@ -158,15 +152,13 @@ class L7LBConfig
 			Exception::raise( "expected {" );
 		string *name;
 		vector<SessionConfig *> *sessionConfigs = new vector<SessionConfig *>();
-		while( (name = nextToken()) != nullptr ) 
+		while( (name = nextToken()) != nullptr )
 		{
 			if( *name == "}" )
 				break;
 			string *value;
 			if( (value = nextToken()) == nullptr ) 
-			{
 				Exception::raise( "expected value" );
-			}
 # if TRACE
 			cout << "protocol=" << *protocol << " name=" << *name << " value=" << *value << endl;
 # endif // TRACE
