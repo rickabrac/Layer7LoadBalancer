@@ -144,7 +144,7 @@ ProxySession :: _main( ProxySessionContext *context )
 					{
 						if( context->clientSSL )
 						{
-							SSL_shutdown( context->clientSSL );
+//							SSL_shutdown( context->clientSSL );
 //							SSL_free( context->clientSSL );	// crashes when SSL_free() is called here
 							context->clientSSL = nullptr;
 						}

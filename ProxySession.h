@@ -44,10 +44,10 @@ class ProxySessionContext : public SessionContext
 
   private:
 
-	char *buf;
-	size_t bufLen;
 	const char *destStr;
 	bool useTLS; 
+	char *buf;
+	size_t bufLen;
 	const char *protocolSessionAttribute;
 	const char *protocolStartHeader;
 	const char *protocolAttributeSeparator;
@@ -61,11 +61,13 @@ class ProxySessionContext : public SessionContext
 class ProxySession : public Session 
 {
 	public:
+
 		ProxySession( ProxySessionContext *context );
 		~ProxySession();
 		void stop( void );
 
 	private:
+
 		static void _main( ProxySessionContext *context );
 		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 		ProxySessionContext *context;

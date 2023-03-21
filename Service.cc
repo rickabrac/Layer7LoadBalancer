@@ -134,8 +134,10 @@ Service :: ~Service()
 # if TRACE
 	Log::log( "Service::~Service()" );
 # endif // TRACE
+
 	if( ServiceContext::ssl_ctx )
 		SSL_CTX_free( ServiceContext::ssl_ctx );
+
 	if( context->socket > -1 )
 		(void) close( context->socket );
 }
@@ -224,6 +226,41 @@ void Service :: _main( ServiceContext *context )
 # endif // TRACE
 
 			Session *session = context->service->getSession( clientSocket, clientSSL );
+
+			context->sessionMutex.lock();
+
+			if( context->sessions.size() == 0 )
+			{
+				SSL_CTX_free( ServiceContext::ssl_ctx );
+
+				if( !(ServiceContext::ssl_ctx = SSL_CTX_new( SSLv23_server_method() )) )
+					Exception::raise( "SSL_CTX_new() failed: %s", ERR_error_string( ERR_get_error(), NULL ) );
+
+				SSL_CTX_set_options( ServiceContext::ssl_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1
+					| SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION ); // SSL_OP_NO_SSLv2 );
+
+				if( SSL_CTX_use_certificate_file( ServiceContext::ssl_ctx, context->certPath, SSL_FILETYPE_PEM ) != 1 )
+				{
+					Exception::raise( "SSL_CTX_use_certificate_file() failed: %s",
+						ERR_error_string( ERR_get_error(), NULL ) );
+				}
+
+				if( SSL_CTX_use_PrivateKey_file( ServiceContext::ssl_ctx, context->keyPath, SSL_FILETYPE_PEM ) != 1 )
+				{
+					Exception::raise( "SSL_CTX_use_PrivateKey_file() failed: %s",
+						ERR_error_string( ERR_get_error(), NULL ) );
+				}
+
+				if( context->trustPath != nullptr && SSL_CTX_load_verify_locations( ServiceContext::ssl_ctx, NULL, context->trustPath) <= 0 )
+				{
+					Exception::raise( "SSL_CTX_load_verify_locations() failed: %s",
+						ERR_error_string( ERR_get_error(), NULL ) );
+				}
+			}
+
+			context->sessions.insert( session);
+
+			context->sessionMutex.unlock();
 
 			if( !session )
 				Exception::raise( "getSession() failed" );

@@ -38,11 +38,12 @@ class Connection
 
     private:
 
+	SocketAddress *sockAddr = nullptr;
 	SSL *ssl = nullptr;
+	bool secure;
+
 	static mutex mutex;
 	static SSL_CTX *ssl_ctx;
-	SocketAddress *sockAddr = nullptr;
-	bool secure;
 };
 
 # endif // _Connection_h_
