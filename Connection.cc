@@ -34,7 +34,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 {
 	sockAddr = new SocketAddress( destStr );
 	this->useTLS = useTLS;
-	
+
 	Connection::mutex.lock();
 
 	if( useTLS && !Connection::ssl_ctx )
@@ -70,8 +70,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 	{
 		socket = ::socket( AF_INET, SOCK_STREAM, 0 );
 		if( socket == -1 )
-			Exception::raise( "Connection::Connection( \"%s\" ) socket() failed (%s)",
-				destStr, strerror( errno ) );
+			Exception::raise( "Connection::Connection( \"%s\" ) socket() failed (%s)", destStr, strerror( errno ) );
 
 		int set = 1;
 		setsockopt( socket, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof( int ) );
@@ -81,8 +80,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 		if( (flags = fcntl( socket, F_GETFL, NULL) ) < 0 )
 		{ 
 			(void) close( socket );
-			Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
-				destStr, strerror( errno ) );
+			Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n", destStr, strerror( errno ) );
 		}
 		flags |= O_NONBLOCK; 
 		if( fcntl( socket, F_SETFL, flags ) < 0 )
@@ -113,8 +111,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 				if( result < 0 && errno != EINTR )
 				{
 					(void) close( socket );
-					Exception::raise( "Connection::Connection( \"%s\" ) select() failed (%s)",
-						destStr, strerror( errno ) );
+					Exception::raise( "Connection::Connection( \"%s\" ) select() failed (%s)", destStr, strerror( errno ) );
 				} 
 				else if( result > 0 )
 				{
@@ -125,8 +122,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 					if( getsockopt( socket, SOL_SOCKET, SO_ERROR, (void *)(&optval), &optlen ) < 0 )
 					{ 
 						(void) close( socket );
-						Exception::raise( "Connection::Connection( \"%s\" ) getsockopt() failed (%s)",
-							destStr, strerror( errno ) );
+						Exception::raise( "Connection::Connection( \"%s\" ) getsockopt() failed (%s)", destStr, strerror( errno ) );
 					} 
 					// check the value returned... 
 					if( optval )
@@ -138,8 +134,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 						if( optval == 61 )
 						{
 							(void) close( socket );
-							Exception::raise( "Connection::Connection( \"%s\" ) server down?",
-								destStr, strerror( errno ) );
+							Exception::raise( "Connection::Connection( \"%s\" ) server down?", destStr, strerror( errno ) );
 						}
 						else
 							continue;
@@ -157,8 +152,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 			else
 			{ 
 # ifdef TRACE
-				Exception::raise( "Connection::Connection( \"%s\" ) connect() failed (%s)",
-					destStr, strerror( errno ) );
+				Exception::raise( "Connection::Connection( \"%s\" ) connect() failed (%s)", destStr, strerror( errno ) );
 # endif // TRACE
 			} 
 		}
@@ -171,8 +165,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 	if( (flags = fcntl( socket, F_GETFL, NULL) ) < 0 )
 	{ 
 		(void) close( socket );
-		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n",
-			destStr, strerror( errno ) );
+		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_GETFL ) failed (%s)\n", destStr, strerror( errno ) );
 	}
 
 	flags &= ~O_NONBLOCK; 
@@ -180,8 +173,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 	if( fcntl( socket, F_SETFL, flags ) < 0 )
 	{ 
 		(void) close( socket );
-		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n",
-			destStr, strerror( errno ) );
+		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n", destStr, strerror( errno ) );
 	} 
 
 	if( useTLS )
