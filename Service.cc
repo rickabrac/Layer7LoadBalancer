@@ -199,8 +199,6 @@ void Service :: _main( ServiceContext *context )
 						ERR_error_string( ERR_get_error(), NULL ) ); 
 				}
 
-//				SSL_set_accept_state( clientSSL );
-
 				int result = 0;
 				if( (result = SSL_accept( clientSSL )) < 0 ) 
 				{
