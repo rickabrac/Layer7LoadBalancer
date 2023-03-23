@@ -32,6 +32,7 @@ using namespace std;
 class ProxyServiceContext : public ServiceContext 
 {
 	public:
+
 		ProxyServiceContext( const char *listenStr, const char *destStr ) :
 			ServiceContext( listenStr )
 		{
@@ -45,6 +46,7 @@ class ProxyServiceContext : public ServiceContext
 class ProxyService : public Service 
 {
 	public:
+
 		ProxyService( ServiceContext *context ) : Service( context ) { }
 
 		ThreadMain main( void ) { return( (ThreadMain) _main ); }
@@ -60,10 +62,12 @@ class ProxyService : public Service
 class EchoSessionContext : public SessionContext 
 {
 	public:
+
 		EchoSessionContext( Service *service, int clientSocket, SSL *clientSSL )
 			: SessionContext( service, clientSocket, clientSSL ) { }
 
 	private:
+
 		char buf[ 1024 ];
 		int len;
 
