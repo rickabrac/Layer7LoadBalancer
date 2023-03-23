@@ -29,14 +29,14 @@ class SessionContext : public ThreadContext
 {
     public:
 
-    SessionContext( Service *daemon, int clientSocket, SSL *clientSSL = nullptr ); // , const char *protocolSessionAttribute = nullptr );
+	SessionContext( Service *daemon, int clientSocket, SSL *clientSSL = nullptr );
 	~SessionContext();
 	int clientSocket;
 	SSL *clientSSL;
 
     protected:
 
-    Service *service;
+	Service *service;
 	Session *session = nullptr;
 
     friend class Session;
@@ -50,7 +50,7 @@ class Session : public Thread
 	Session( SessionContext *context );
 	virtual ~Session();
 
-//    private:
+    private:
 
 	SessionContext *context;
 

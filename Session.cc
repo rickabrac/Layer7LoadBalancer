@@ -51,7 +51,7 @@ SessionContext :: ~SessionContext()
 	}
 	if( session )
 	{
-		session->context->service->notifyEndOfSession( this );
+		service->endSession( this );
 		delete( session );
 	}
 }

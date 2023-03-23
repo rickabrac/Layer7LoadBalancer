@@ -39,14 +39,14 @@ class ServiceConfig
 {
     public:
 
-	ServiceConfig (
+	ServiceConfig(
 		string listenStr,
 		string certPath,
 		string keyPath,
 		string trustPath,
 		string sessionCookie,
 		vector< SessionConfig * > *sessionConfigs )
-		{
+	{
 
 # if TRACE
 		cout << "ServiceConfig( \""

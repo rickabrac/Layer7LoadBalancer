@@ -79,7 +79,7 @@ SSL_CTX *ServiceContext :: get_SSL_CTX( void )
 			ERR_error_string( ERR_get_error(), NULL ) );
 	}
 
-	if( trustPath != nullptr && SSL_CTX_load_verify_locations( ssl_ctx, NULL, trustPath) <= 0 )
+	if( trustPath && SSL_CTX_load_verify_locations( ssl_ctx, NULL, trustPath) <= 0 )
 	{
 		Exception::raise( "SSL_CTX_load_verify_locations() failed: %s",
 			ERR_error_string( ERR_get_error(), NULL ) );
@@ -88,7 +88,7 @@ SSL_CTX *ServiceContext :: get_SSL_CTX( void )
 	return( ssl_ctx );
 }
 
-size_t Service :: bufLen = 4096; // 32768;
+size_t Service :: bufLen = 8192;
 mutex Service :: bufLenMutex;
 SSL_CTX * Service :: ssl_ctx = nullptr;
 mutex Service :: ssl_ctx_mutex;
@@ -163,14 +163,14 @@ Service :: isSecure()
 }
 
 void
-Service :: notifySessionProtocolAttribute( string *value, void *data )
+Service :: sessionNotifyProtocolAttribute( string *value, void *data )
 {
 	if( value || data ) return;	// suppress compiler warning
 	return;
 }
 
 void
-Service :: notifyEndOfSession( SessionContext *context )
+Service :: endSession( SessionContext *context )
 {
 	if( !context->service->isSecure() )
 	 	return;
@@ -201,9 +201,9 @@ Service :: peek( int socket, SSL *ssl, void *buf, size_t len )
 	timeout.tv_usec = 100000;
 	if( select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout ) < 0 )
 		return( 0 ); 
-    if( ssl ) 
-        return( SSL_peek( ssl, buf, (int) len ) );
-    return( recv( socket, buf, len, MSG_PEEK ) );
+	if( ssl ) 
+		return( SSL_peek( ssl, buf, (int) len ) );
+	return( recv( socket, buf, len, MSG_PEEK ) );
 }
 
 void Service :: _main( ServiceContext *context )
@@ -290,7 +290,6 @@ void Service :: _main( ServiceContext *context )
 
 			session->run();
 			session->detach();
-
 		}
 		catch( const char *error )
 		{

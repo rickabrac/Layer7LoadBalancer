@@ -169,7 +169,8 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 	if( fcntl( socket, F_SETFL, flags ) < 0 )
 	{ 
 		(void) close( socket );
-		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n", destStr, strerror( errno ) );
+		Exception::raise( "Connection::Connection( \"%s\" ) fcntl( F_SETFL ) failed (async -> sync) (%s)\n",
+			destStr, strerror( errno ) );
 	} 
 
 	if( useTLS )

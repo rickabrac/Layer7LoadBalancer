@@ -58,7 +58,7 @@ class Service : public Thread
 
 	Service( ServiceContext *context );
 	~Service();
-    ssize_t peek( int clientSocket, SSL *clientSSL, void *buf, size_t len );
+	ssize_t peek( int clientSocket, SSL *clientSSL, void *buf, size_t len );
 
     protected:
 
@@ -68,9 +68,9 @@ class Service : public Thread
 
 	ServiceContext *context; 
 	virtual Session *getSession( int clientSocket, SSL *clientSSL = nullptr ) = 0;
-	virtual void notifySessionProtocolAttribute( string *value, void *data = nullptr );
+	virtual void sessionNotifyProtocolAttribute( string *value, void *data = nullptr );
 	bool isSecure( void );
-	void notifyEndOfSession( SessionContext *context );
+	void endSession( SessionContext *context );
 	static mutex bufLenMutex;
 	static size_t bufLen;
 	static SSL_CTX *ssl_ctx;

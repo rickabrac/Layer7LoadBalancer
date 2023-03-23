@@ -33,6 +33,7 @@
 # include <fstream>
 # include <string>
 # include <map>
+# include <sys/time.h>
 
 # define _L7LBConfig_h_    1
 # include "L7LBConfig.h"
@@ -75,7 +76,8 @@ class L7LBService : public Service
 
 		L7LBServiceContext *context;
 
-		map< string, string > stickySessions;
+		map< string, string > stickySessionDestStr;
+		map< string, int > stickySessionLastUsed;
 
 		Session *getSession( int clientSocket, SSL *clientSSL )
 		{
@@ -121,7 +123,7 @@ class L7LBService : public Service
 						string value( c2 );
 						httpCookies[ name ] = &value;
 					}
-					line = newline + 2;
+						line = newline + 2;
 				}
 # if TRACE
 				// Log::console( "httpCookies.size()=%d", httpCookies.size() );
@@ -130,14 +132,15 @@ class L7LBService : public Service
 # endif // TRACE
 # if TRACE
 				string *sessionCookieValue = httpCookies[ context->sessionCookie ];
-				if( sessionCookieValue == nullptr )
+				if( sessionCookieValue )
 					Log::console( "%s NOT FOUND", context->sessionCookie.c_str() );
 # endif // TRACE
 			}
 
-			L7LBServiceContext *_context = (L7LBServiceContext *) context;
-			vector<SessionConfig *> sessionConfigs = *_context->sessionConfigs;
-			int sessionIndex = 0;	// use first session configuration if multiple specified for now
+			L7LBServiceContext *myServiceContext = (L7LBServiceContext *) context;
+			vector<SessionConfig *> sessionConfigs = *myServiceContext->sessionConfigs;
+			int sessionIndex = 0;
+			// ### TO DO: RESPECT COOKIE-SESSION PERSISTENCE OR DO ROUND-ROBIN ###
 			SessionConfig sessionConfig = *sessionConfigs[ sessionIndex ];
 			const char *destStr = sessionConfig.destStr;
 			bool useTLS = sessionConfig.useTLS;
@@ -156,11 +159,19 @@ class L7LBService : public Service
 			return( new ProxySession( context ) );
 		}
 
-		void notifySessionProtocolAttribute( string *value, void *data )
+#		define SESSION_COOKIE_TIMEOUT    1800
+
+		// ### TO-DO: PERIODICALLY REMOVE TIMED-OUT STICKY SESSION MAP ELEMENTS ###
+
+		void sessionNotifyProtocolAttribute( string *value, void *data )
 		{
-			// assume single session-cookie for now 
 			const char *destStr = (const char *) data;
 			Log::console( "notifyProxyProtocolAttribute( \"%s\" ) destStr=%s", value->c_str(), destStr );
+			struct timeval tv;
+			(void) gettimeofday( &tv, NULL );
+			int now = tv.tv_sec;
+			stickySessionDestStr[ *value ] = string( destStr );
+			stickySessionLastUsed[ *value ] = now;
 		}
 };
 
