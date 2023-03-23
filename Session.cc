@@ -28,7 +28,7 @@ using namespace std;
 SessionContext :: SessionContext( Service *service, int clientSocket, SSL *clientSSL )
 {
 # if TRACE
-	Log::log( "SessionContext::SessionContext()" );
+	Log::console( "SessionContext::SessionContext()" );
 # endif // TRACE
 	this->service= service;
 	this->clientSocket = clientSocket;
@@ -38,7 +38,7 @@ SessionContext :: SessionContext( Service *service, int clientSocket, SSL *clien
 SessionContext :: ~SessionContext()
 {
 # if TRACE
-	Log::log( "SessionContext::~SessionContext()" );
+	Log::console( "SessionContext::~SessionContext()" );
 # endif // TRACE
 	if( service->isSecure() && clientSSL )
 	{
@@ -59,7 +59,7 @@ SessionContext :: ~SessionContext()
 Session :: Session( SessionContext *context ) : Thread( context )
 {
 # if TRACE
-	Log::log( "Session::Session()" );
+	Log::console( "Session::Session()" );
 # endif // TRACE
 	context->session = this;
 	this->context = context;
@@ -68,7 +68,7 @@ Session :: Session( SessionContext *context ) : Thread( context )
 Session :: ~Session()
 {
 # if TRACE
-	Log::log( "Session::~Session()" );
+	Log::console( "Session::~Session()" );
 # endif // TRACE
 }
 

@@ -78,7 +78,7 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 					_in_addr = (struct in_addr *) malloc( sizeof( struct in_addr ) );
 					*_in_addr = in_addr;
 # if TRACE
-					Log::log( "NEW IN_ADDR( %s ) <%p>", hostStr, _in_addr );
+					Log::console( "NEW IN_ADDR( %s ) <%p>", hostStr, _in_addr );
 # endif // TRACE
 					SocketAddress::hosts[ hostStr ] = _in_addr;
 				}
@@ -126,10 +126,10 @@ SocketAddress :: SocketAddress ( const char *addrStr )
 void
 SocketAddress :: debug( void )
 {
-	Log::log( "this=<%p>", this );
-	Log::log( "sockaddr_in=<%p>", &this->sockaddr_in );
-	Log::log( "sockaddr_in.sin_family=%d", this->sockaddr_in.sin_family );
-	Log::log( "sockaddr_in.sin_port=%d", ntohs( this->sockaddr_in.sin_port ) );
-	Log::log( "sockaddr_in.sin_addr=[%s]", inet_ntoa( this->sockaddr_in.sin_addr ) );
+	Log::console( "this=<%p>", this );
+	Log::console( "sockaddr_in=<%p>", &this->sockaddr_in );
+	Log::console( "sockaddr_in.sin_family=%d", this->sockaddr_in.sin_family );
+	Log::console( "sockaddr_in.sin_port=%d", ntohs( this->sockaddr_in.sin_port ) );
+	Log::console( "sockaddr_in.sin_addr=[%s]", inet_ntoa( this->sockaddr_in.sin_addr ) );
 }
 

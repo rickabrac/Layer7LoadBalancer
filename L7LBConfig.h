@@ -21,16 +21,16 @@ class SessionConfig
 {
     public:
 
-	SessionConfig( const char *destStr, bool secure )
+	SessionConfig( const char *destStr, bool useTLS )
 	{
 		this->destStr = destStr;
-		this->secure = secure;
+		this->useTLS = useTLS;
 	}
 
     private:
 
 	const char *destStr;
-	bool secure;
+	bool useTLS;
 
     friend class L7LBService;
 };
@@ -173,8 +173,8 @@ class L7LBConfig
 			else if( *name == "TCP" || *name == "TLS" )
 			{
 				const char *destStr = value->c_str();
-				bool secure = strcmp( name->c_str(), "TLS" ) == 0 ? true : false;
-				sessionConfigs->push_back( new SessionConfig( destStr, secure ) );
+				bool useTLS = strcmp( name->c_str(), "TLS" ) == 0 ? true : false;
+				sessionConfigs->push_back( new SessionConfig( destStr, useTLS ) );
 			}
 		}
 # if TRACE

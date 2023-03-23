@@ -73,6 +73,7 @@ class EchoSessionContext : public SessionContext
 class EchoSession : public Session
 {
 	public:
+
 		EchoSession( EchoSessionContext *context ) : Session( context ) { }
 
 		ThreadMain main( void ) { return( (ThreadMain) _main ); }
@@ -80,8 +81,9 @@ class EchoSession : public Session
 		static void _main ( EchoSessionContext *context )
 		{
 # if TRACE
-			Log::log( "EchoSession::main( %p ) RUN", context );
+			Log::console( "EchoSession::main( %p ) RUN", context );
 # endif // TRACE
+
 			context->session->sleep( rand() % 1000 );
 
 			try
@@ -95,15 +97,13 @@ class EchoSession : public Session
 				int selected;
 				context->len = 0;
 				
-//				(void) send( context->clientSocket, "", 0, 0 ); 
-
 				for( ;; )
 				{
 					FD_ZERO( &fdset );
 					FD_ZERO( &empty_fdset );
 					FD_SET( context->clientSocket, &fdset );
 # if TRACE
-					Log::log( "EchoSession[ %p ]::_main: loop clientSocket=%d", context, context->clientSocket );
+					Log::console( "EchoSession[ %p ]::_main: loop clientSocket=%d", context, context->clientSocket );
 # endif // TRACE
 					if( (selected = select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout)) >= 0 )
 					{
@@ -114,18 +114,18 @@ class EchoSession : public Session
 
 							if( (context->len = (int) recv( context->clientSocket, context->buf, sizeof( context->buf ), 0 )) > 0 )
 							{
-								context->buf[ context->len - 1 ] = '\0';
 # if TRACE
+								context->buf[ context->len - 1 ] = '\0';
 								if( strlen( context->buf ) )
-									Log::log( "EchoSession::main( %p ) ECHO \"%s\"", context, context->buf );
-# endif // TRACE
+									Log::console( "EchoSession::main( %p ) ECHO \"%s\"", context, context->buf );
+# endif // TRACE 
 								// send back to client
 								ssize_t sent, total = 0;
 								while( (sent = send( context->clientSocket, context->buf + total, context->len, 0 )) < context->len )
 								{
 									if( sent < 0 )
 									{
-										printf( "EchoSession[ %p ]::_main: send() failed [%d] (%s)",
+										Log::console( "EchoSession[ %p ]::_main: send() failed [%d] (%s)",
 											context, errno, strerror( errno ) );
 										return;
 									}
@@ -133,28 +133,24 @@ class EchoSession : public Session
 									total += sent;
 								}
 # if TRACE
-								Log::log( "EchoSession::main( %p ) SENT \"%s\"", context, context->buf );
+								Log::console( "EchoSession::main( %p ) SENT \"%s\"", context, context->buf );
 # endif // TRACE
 								if( sent == 0 )
 								{
-									Log::log( "EchoSession[ %p ]._main: send() failed [%d] (%s)",
+									Log::console( "EchoSession[ %p ]._main: send() failed [%d] (%s)",
 										context, errno, strerror( errno ) );
 								}
 							}
 							else if( context->len < 0 )
 							{
-# if TRACE
-								Log::log( "EchoSession[ %p ]::_main: len <= 0", context);
-# endif // TRACE
+								Log::console( "EchoSession[ %p ]::_main: len <= 0", context);
 								return;
 							}
 						}
 					}
 					else
 					{
-# if TRACE
-						Log::log( "EchoSession[ %p ]::_main: select() < 0", context ); 
-# endif // TRACE
+						Log::console( "EchoSession[ %p ]::_main: select() < 0", context ); 
 						return;
 					}
 				}
@@ -162,7 +158,7 @@ class EchoSession : public Session
 			catch( const char *msg )
 			{
 				// exception skips to terminate session below
-				Log::log( "EchoSession[ %p ]::_main: %s", context, msg );
+				Log::console( "EchoSession[ %p ]::_main: %s", context, msg );
 			}
 		}
 };
@@ -170,24 +166,28 @@ class EchoSession : public Session
 class EchoServiceContext : public ServiceContext
 {
 	public:
+
 		EchoServiceContext( const char *listenStr ) : ServiceContext( listenStr ) { }
 
 	protected:
+
 		const char *destStr;
 };
 
 class EchoService : public Service
 {
 	public:
+
 		EchoService( EchoServiceContext *context ) : Service( context ) { }
 
 		ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 	protected:
+
 		EchoSession *getSession( int clientSocket, SSL *clientSSL )
 		{
 # if TRACE
-			Log::log( "EchoService[ %p ]::getSession()" );
+			Log::console( "EchoService[ %p ]::getSession()" );
 # endif // TRACE
 			EchoSessionContext *context = new EchoSessionContext( this, clientSocket, clientSSL );
 			return( new EchoSession( context ) );
@@ -199,6 +199,7 @@ class TestSession;
 class TestSessionContext : public ThreadContext 
 {
 	public:
+
 		TestSessionContext( int numEchos )
 		{
 			this->numEchos = numEchos;
@@ -211,6 +212,7 @@ class TestSessionContext : public ThreadContext
 class TestSession : public Thread 
 {
 	public:
+
 		TestSession( TestSessionContext *context ) : Thread( context )
 		{
 			context->session = this;
@@ -218,7 +220,7 @@ class TestSession : public Thread
 
 		virtual ~TestSession()
 		{
-			Log::log( "TestSession::~TestSession()" );
+			Log::console( "TestSession::~TestSession()" );
 			delete( context );
 		}
 
@@ -230,7 +232,7 @@ class TestSession : public Thread
 			try
 			{
 # if TRACE
-				Log::log( "TestSession::main( %p ) RUN", context );
+				Log::console( "TestSession::main( %p ) RUN", context );
 # endif // TRACE
 				connection = new Connection( "localhost:666", false );
 				int i;
@@ -260,7 +262,7 @@ class TestSession : public Thread
 				}
 				delete( connection );
 				++TestSession::finished;
-				Log::log( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
+				Log::console( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
 					context, i, TestSession::finished );
 				context->session->stop();
 			}
@@ -268,7 +270,7 @@ class TestSession : public Thread
 			{
 				if( connection )
 					delete( connection );
-				Log::log( "TestSession[ %p ]::_main: %s", context, error );
+				Log::console( "TestSession[ %p ]::_main: %s", context, error );
 				::exit( -1 );
 			}
 		}
@@ -339,9 +341,9 @@ main( int argc, char **argv )
 	}
 	catch( const char *error )
 	{
-		Log::log( "%s: test failed [%s]", argv[ 0 ], error ); 
+		Log::console( "%s: test failed [%s]", argv[ 0 ], error ); 
 		exit( -1 );
 	}
-	Log::log( "%s: test passed", argv[ 0 ] );
+	Log::console( "%s: test passed", argv[ 0 ] );
 }
 

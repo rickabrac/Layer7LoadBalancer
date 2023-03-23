@@ -18,9 +18,9 @@
 # include "ProxySession.h"
 # include "Exception.h"
 # include "Log.h"
-# include <fcntl.h>
 # include <map>
 # include <string.h>
+# include <unistd.h>
 
 // # define TRACE    1
 
@@ -31,27 +31,27 @@ ProxySessionContext :: ProxySessionContext
 	SSL *clientSSL,
 	const char *destStr,
 	bool useTLS,
-	const char *protocolSessionAttribute,
-	const char *protocolStartHeader,
-	const char *protocolAttributeSeparator,
-	const char *protocolEndAttribute,
-	const char *protocolEndHeader
+	string protocolAttribute,
+	const char *protocolHeaderStart,
+	const char *protocolAttributeDelimeter,
+	const char *protocolAttributeEnd,
+	const char *protocolHeaderEnd
 ) : SessionContext( service, clientSocket, clientSSL )
 {
 
 # if TRACE
-	Log::log( "ProxySessionContext::ProxySessionContext()" );
+	Log::console( "ProxySessionContext::ProxySessionContext()" );
 # endif // TRACE
 	this->service= service;
 	this->clientSocket = clientSocket;
 	this->clientSSL = clientSSL;
 	this->destStr = destStr;
 	this->useTLS = useTLS;
-	this->protocolSessionAttribute = protocolSessionAttribute;
-	this->protocolStartHeader = protocolStartHeader;
-	this->protocolAttributeSeparator = protocolAttributeSeparator;
-	this->protocolEndAttribute  = protocolEndAttribute;
-	this->protocolEndHeader = protocolEndHeader;
+	this->protocolAttribute = protocolAttribute;
+	this->protocolHeaderStart = protocolHeaderStart;
+	this->protocolAttributeDelimiter = protocolAttributeDelimeter;
+	this->protocolAttributeEnd  = protocolAttributeEnd;
+	this->protocolHeaderEnd = protocolHeaderEnd;
 	this->bufLen = service->bufLen;
 	this->buf = (char *) malloc( service->bufLen );
 }
@@ -59,7 +59,7 @@ ProxySessionContext :: ProxySessionContext
 ProxySessionContext :: ~ProxySessionContext()
 {
 # if TRACE
-	Log::log( "ProxySessionContext::~ProxySessionContext()" );
+	Log::console( "ProxySessionContext::~ProxySessionContext()" );
 # endif // TRACE
 	if( buf ) 
 		free( buf );
@@ -67,17 +67,37 @@ ProxySessionContext :: ~ProxySessionContext()
 		delete( proxy );
 }
 
+bool
+ProxySessionContext :: clientDataReady( void )
+{
+	fd_set fdset;
+	fd_set empty_fdset;
+	FD_ZERO( &fdset );
+	FD_SET( clientSocket, &fdset );
+	FD_ZERO( &empty_fdset );
+	struct timeval timeout;
+	bzero( &timeout, sizeof( timeout ) );
+	timeout.tv_sec = 0; 
+	timeout.tv_usec = 100000;
+	if( select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout ) < 0 )
+		return( false );
+	char buf;
+    if( clientSSL ) 
+        return( SSL_peek( clientSSL, &buf, 1 ) > 0 );
+    return( recv( clientSocket, &buf, 1, MSG_PEEK ) > 0 );
+}
+
 ProxySession :: ProxySession( ProxySessionContext *context ) : Session( context )
 {
 # if TRACE
-	Log::log( "ProxySession::ProxySession()" );
+	Log::console( "ProxySession::ProxySession()" );
 # endif // TRACE
 }
 
 ProxySession :: ~ProxySession()
 {
 # if TRACE
-	Log::log( "ProxySession::~ProxySession()" );
+	Log::console( "ProxySession::~ProxySession()" );
 # endif // TRACE
 }
 
@@ -85,7 +105,7 @@ void
 ProxySession :: _main( ProxySessionContext *context )
 {
 # if TRACE
-	Log::log( "ProxySession::_main[ %p ] RUN", context );
+	Log::console( "ProxySession::_main[ %p ] RUN", context );
 # endif // TRACE
 
 	try
@@ -109,7 +129,7 @@ ProxySession :: _main( ProxySessionContext *context )
 		struct timeval timeout;
 		bzero( &timeout, sizeof( timeout ) );
 		timeout.tv_sec = 0; 
-		timeout.tv_usec = 10000;
+		timeout.tv_usec = 100000;
 		int selected;
 
 		FD_ZERO( &fdset );
@@ -122,7 +142,7 @@ ProxySession :: _main( ProxySessionContext *context )
 			if( pending )
 				Exception::raise( "pending != 0" );
 # if TRACE
-//			Log::log( "ProxySession[ %p ]::_main: select( %d, %d )...",
+//			Log::console( "ProxySession[ %p ]::_main: select( %d, %d )...",
 //				context, context->clientSocket, context->proxy->socket );
 # endif // TRACE
 			if( (selected = select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout )) >= 0 )
@@ -130,23 +150,21 @@ ProxySession :: _main( ProxySessionContext *context )
 				if( selected == 0 )
 				{
 # if TRACE
-//					Log::log( "SELECT() RETURNED selected=%d errno=%d (%s)", selected, errno, strerror( errno ) );
+//					Log::console( "SELECT() RETURNED selected=%d errno=%d (%s)", selected, errno, strerror( errno ) );
 # endif // TRACE
 					if( loops > 0 )
 					{
 # if TRACE
 						if( loops % 20 == 0 )
-							Log::log( "ProxySession[ %p ]::_main: *IDLE*", context );
+							Log::console( "ProxySession[ %p ]::_main: *IDLE*", context );
 # endif // TRACE
 						++loops;
 						continue;
 					}
-					else
+					else if( !context->clientDataReady() )
 					{
 						if( context->clientSSL )
-						{
 							context->clientSSL = nullptr;
-						}
 						delete( context );
 						return;
 					}
@@ -160,7 +178,6 @@ ProxySession :: _main( ProxySessionContext *context )
 					bzero( context->buf, context->bufLen );
 
 					ssize_t len;
-
 					if( context->clientSSL )
 						len = (int) SSL_read( context->clientSSL, context->buf, (int) context->bufLen );
 					else
@@ -174,7 +191,7 @@ ProxySession :: _main( ProxySessionContext *context )
 						size_t recvLen = len;
 # if TRACE
  						context->buf[ len ] = '\0';
-						Log::log( "SENDING %d BYTES TO SERVER [\n%s]", len, context->buf );
+						Log::console( "SENDING %d BYTES TO SERVER [\n%s]", len, context->buf );
 # endif // TRACE
 						while( len && (sent = context->proxy->write( ((char *) context->buf) + total, len )) <= len )
 						{
@@ -183,12 +200,12 @@ ProxySession :: _main( ProxySessionContext *context )
 # if TRACE
 								if( context->clientSSL )
 								{
-									Log::log( "ProxySession[ %p ]::_main: context->proxy->write() failed [%d] (%s)",
+									Log::console( "ProxySession[ %p ]::_main: context->proxy->write() failed [%d] (%s)",
 										context, errno, ERR_error_string( ERR_get_error(), NULL ) ); 
 								}
 								else
 								{
-									Log::log( "ProxySession[ %p ]::_main: context->proxy->write() failed [%d] (%s)",
+									Log::console( "ProxySession[ %p ]::_main: context->proxy->write() failed [%d] (%s)",
 										context, errno, strerror( errno ) );
 								}
 # endif // TRACE
@@ -198,7 +215,7 @@ ProxySession :: _main( ProxySessionContext *context )
 # if TRACE
 							if( sent < len )
 							{
-								Log::log( "ProxySession[ %p ]::_main( %p ) PARTIAL SEND TO SERVER (sent = %zu)",
+								Log::console( "ProxySession[ %p ]::_main( %p ) PARTIAL SEND TO SERVER (sent = %zu)",
 									context, sent );
 							}
 # endif // TRACE
@@ -215,7 +232,7 @@ ProxySession :: _main( ProxySessionContext *context )
 							free( context->buf );
 							context->buf = (char *) malloc( context->bufLen );
 # if TRACE
-							Log::log( "ProxySession[ %p ]::_main: BUFLEN=%d", context, context->service->bufLen ); 
+							Log::console( "ProxySession[ %p ]::_main: BUFLEN=%d", context, context->service->bufLen ); 
 # endif // TRACE
 						}
 					}
@@ -225,11 +242,15 @@ ProxySession :: _main( ProxySessionContext *context )
 						context->clientSSL = nullptr;
 # if TRACE
 						if( context->clientSSL )
-							Log::log( "ProxySession[ %p ]::_main: SSL_read() failed (%s)",
+						{
+							Log::console( "ProxySession[ %p ]::_main: SSL_read() failed (%s)",
 								context, ERR_error_string( ERR_get_error(), NULL ) ); 
+						}
 						else
-							Log::log( "ProxySession[ %p ]::_main: recv() failed [%d] (%s)",
+						{
+							Log::console( "ProxySession[ %p ]::_main: recv() failed [%d] (%s)",
 								context, errno, strerror( errno ) ); 
+						}
 # endif // TRACE
 						delete( context );
 						return;
@@ -245,8 +266,8 @@ ProxySession :: _main( ProxySessionContext *context )
 					if( (pending = context->proxy->read( context->buf, context->bufLen )) > 0 )
 					{
 # if TRACE
-						Log::log( "ProxySession[ %p ]::_main: RECEIVED %d BYTES FROM SERVER", context, pending );
-//						Log::log( "ProxySession[ %p ]::_main: RECEIVED FROM SERVER [%s]", context, context->buf );
+						Log::console( "ProxySession[ %p ]::_main: RECEIVED %d BYTES FROM SERVER", context, pending );
+//						Log::console( "ProxySession[ %p ]::_main: RECEIVED FROM SERVER [%s]", context, context->buf );
 # endif // TRACE
 						++loopReads;
 						ssize_t sent;
@@ -261,19 +282,19 @@ ProxySession :: _main( ProxySessionContext *context )
 							if( sent < 0 )
 							{
 # if TRACE
-								Log::log( "ProxySession[ %p ]::_main: PENDING=%d SENT=%d", context, pending, sent );
+								Log::console( "ProxySession[ %p ]::_main: PENDING=%d SENT=%d", context, pending, sent );
 # endif // TRACE
 								if( context->clientSSL )
 								{
 # ifdef TRACE
-									Log::log( "ProxySession[ %p ]::_main SSL_write() failed [%d] (%s)",
+									Log::console( "ProxySession[ %p ]::_main SSL_write() failed [%d] (%s)",
 										context, errno, ERR_error_string( ERR_get_error(), NULL ) );
 # endif // TRACE
 								}
 								else
 								{
 # ifdef TRACE
-									Log::log( "ProxySession[ %p ]::_main: send() failed [%d] (%s)",
+									Log::console( "ProxySession[ %p ]::_main: send() failed [%d] (%s)",
 										context, errno, strerror( errno ) );
 # endif // TRACE
 								}
@@ -283,47 +304,47 @@ ProxySession :: _main( ProxySessionContext *context )
 							if( pending == 0 )
 							{
 # ifdef TRACE
-								Log::log( "USLEEP( 1000 )" );
+								Log::console( "USLEEP( 1000 )" );
 # endif // TRACE
-								usleep( 1000 );
+								usleep( 10000 );
 							}
 							pending -= sent;
 							total += sent;
 						}
 # if TRACE
-//						Log::log( "ProxySession[ %p ]::_main: SENT TO CLIENT [\n%s]", context, context->buf );
+//						Log::console( "ProxySession[ %p ]::_main: SENT TO CLIENT [\n%s]", context, context->buf );
 # endif // TRACE
-						if( strncmp( context->buf, context->protocolStartHeader, strlen( context->protocolStartHeader )  ) == 0 )
+						if( strncmp( context->buf, context->protocolHeaderStart, strlen( context->protocolHeaderStart )  ) == 0 )
 						{
 							ProxySessionContext *proxySessionContext = (ProxySessionContext *) context;
 							char lineBuf[ 1024 ];
-							char *line = context->buf + 17;
+							char *line = context->buf + strlen( context->protocolHeaderStart );
 							char *newline;
-							const char *endOfRecord = context->protocolEndAttribute;
-							const char *recordSeparator = context->protocolAttributeSeparator; 
-							while( (newline = strstr( line, endOfRecord )) )
+							const char *attributeEnd = context->protocolAttributeEnd;
+							const char *attributeDelimeter = context->protocolAttributeDelimiter; 
+							while( (newline = strstr( line, attributeEnd )) )
 							{
-								if( strncmp( line, endOfRecord, strlen( endOfRecord ) ) == 0 )
+								if( strncmp( line, context->protocolHeaderEnd, strlen( context->protocolHeaderEnd ) ) == 0 )
 									break;
 								bzero( lineBuf, sizeof( lineBuf ) );
 								memcpy( lineBuf, line, newline - line );
 								char *c1;
 								for( c1 = lineBuf; *c1 && isspace( *c1 ); c1++ );
 								char *c2;
-								for( c2 = c1; strncmp( c2, recordSeparator, strlen( recordSeparator ) ) != 0 && strstr( c2, endOfRecord ) != c2; c2++ );
-								if( strncmp( c2, recordSeparator, strlen( recordSeparator ) ) == 0 )
+								for( c2 = c1; strncmp( c2, attributeDelimeter, strlen( attributeDelimeter ) ) != 0 && strstr( c2, attributeEnd ) != c2; c2++ );
+								if( strncmp( c2, attributeDelimeter, strlen( attributeDelimeter ) ) == 0 )
 								{
 									*c2++ = '\0';
-									const char *name = c1;
+									string name( c1 );
 									while( isspace( *c2 ) )
 										++c2;
-									if( strcmp( proxySessionContext->protocolSessionAttribute, name ) == 0 )
+									if( context->protocolAttribute == name )
 									{
 # if TRACE
-										Log::log( "ATTRIBUTE [%s: %s]", name, c2 );
+										Log::console( "PROTOCOL ATTRIBUTE [%s: %s]", name.c_str(), c2 );
 # endif // TRACE
 										string value( c2 );
-										// proxySessionContext->service->notifySessionProtocolAttribute( &value );
+										proxySessionContext->service->notifySessionProtocolAttribute( &value, (void *) context->destStr );
 										break;
 									}
 								}
@@ -340,20 +361,20 @@ ProxySession :: _main( ProxySessionContext *context )
 							free( context->buf );
 							context->buf = (char *) malloc( context->bufLen );
 # if TRACE
-							Log::log( "ProxySession[ %p ]::_main: BUFLEN=%d", context, context->service->bufLen ); 
+							Log::console( "ProxySession[ %p ]::_main: BUFLEN=%d", context, context->service->bufLen ); 
 # endif // TRACE
 						}
 					}
 					else if( errno != EAGAIN && pending <= 0 )
 					{
 # if TRACE
-						Log::log( "ProxySession[ % ]::_main: END SESSION (pending <= 0)" );
+						Log::console( "ProxySession[ % ]::_main: END SESSION (pending <= 0)" );
 
 						if( context->clientSSL )
-							Log::log( "ProxySession[ %p ]::_main: SSL_read() failed [%d] (%s)",
+							Log::console( "ProxySession[ %p ]::_main: SSL_read() failed [%d] (%s)",
 								context, errno, ERR_error_string( ERR_get_error(), NULL ) );
 						else
-							Log::log( "ProxySession[ %p ]._main: recv() failed [%d] (%s)",
+							Log::console( "ProxySession[ %p ]._main: recv() failed [%d] (%s)",
 								context, errno, strerror( errno ) );
 # endif // TRACE
 						delete( context );
@@ -366,13 +387,13 @@ ProxySession :: _main( ProxySessionContext *context )
 					if( errno == 60 )
 					{
 # if TRACE
-						Log::log( "ProxySession[ %p ]._main: ERRNO == 60", context );
+						Log::console( "ProxySession[ %p ]._main: ERRNO == 60", context );
 # endif // TRACE
 						delete( context );	
 						return;
 					}
 # if TRACE
-					Log::log( "loopReads == 0 errno=%d", errno );
+					Log::console( "loopReads == 0 errno=%d", errno );
 # endif // TRACE
 					usleep( 1000 );
 				}
@@ -380,7 +401,7 @@ ProxySession :: _main( ProxySessionContext *context )
 			else
 			{
 # if TRACE
-				Log::log( "ProxySession[ %p ]::_main: select() failed (%s) [%d]", context, strerror( errno ), errno );
+				Log::console( "ProxySession[ %p ]::_main: select() failed (%s) [%d]", context, strerror( errno ), errno );
 # endif // TRACE
 				SSL_shutdown( context->clientSSL );
 //				SSL_free( context->clientSSL );
@@ -392,7 +413,7 @@ ProxySession :: _main( ProxySessionContext *context )
 		}
 		catch( const char *error )
 		{
-			Log::log( "ProxySession[ %p ]::_main: : %s", error );
+			Log::console( "ProxySession[ %p ]::_main: : %s", error );
 			::exit( -1 );
 		}
 	}

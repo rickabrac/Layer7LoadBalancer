@@ -31,12 +31,12 @@ class SessionContext : public ThreadContext
 
     SessionContext( Service *daemon, int clientSocket, SSL *clientSSL = nullptr ); // , const char *protocolSessionAttribute = nullptr );
 	~SessionContext();
+	int clientSocket;
+	SSL *clientSSL;
 
     protected:
 
     Service *service;
-	int clientSocket;
-	SSL *clientSSL;
 	Session *session = nullptr;
 
     friend class Session;

@@ -94,7 +94,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 		if( (result = connect( socket, (struct sockaddr *) &sockAddr->sockaddr_in, sizeof( struct sockaddr_in ) )) == -1 )
 		{
 # ifdef TRACE
-			Log::log( "Connection::Connection( \"%s\" ) connect() failed (%s)", destStr, strerror( errno ) );
+			Log::console( "Connection::Connection( \"%s\" ) connect() failed (%s)", destStr, strerror( errno ) );
 # endif // TRACE
 			if( errno == EINPROGRESS )
 			{
@@ -128,7 +128,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 					if( optval )
 					{ 
 # ifdef TRACE
-						Log::log( "Connection::Connection( \"%s\" ) getsockopt() failed (%s) [%d]",
+						Log::console( "Connection::Connection( \"%s\" ) getsockopt() failed (%s) [%d]",
 							destStr, strerror( optval ), optval );
 # endif // TRACE
 						if( optval == 61 )
@@ -142,7 +142,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 					else
 					{ 
 # ifdef TRACE
-						Log::log( "Connection::Connection( \"%s\" ) select() timed out", destStr );
+						Log::console( "Connection::Connection( \"%s\" ) select() timed out", destStr );
 # endif // TRACE
 						(void) close( socket );
 						continue;
@@ -150,11 +150,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 				}
 			}
 			else
-			{ 
-# ifdef TRACE
 				Exception::raise( "Connection::Connection( \"%s\" ) connect() failed (%s)", destStr, strerror( errno ) );
-# endif // TRACE
-			} 
 		}
 	 	break;
 	}
@@ -200,7 +196,7 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 	}
 
 # if TRACE
-	Log::log( "Connection::Connection( %s ) ssl=<%p>", destStr, ssl );
+	Log::console( "Connection::Connection( %s ) ssl=<%p>", destStr, ssl );
 # endif // TRACE
 }
 
@@ -239,7 +235,7 @@ Connection :: write( void *data, size_t len )
 Connection :: ~Connection ()
 {
 # if TRACE
-	Log::log( "Connection::~Connection" );
+	Log::console( "Connection::~Connection" );
 # endif // TRACE
 	if( ssl )
 	{

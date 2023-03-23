@@ -49,13 +49,13 @@ class L7LBServiceContext: public ServiceContext
 			: ServiceContext( serviceConfig->listenStr.c_str(), serviceConfig->keyPath.c_str(), serviceConfig->certPath.c_str() )
 		{
 			this->sessionConfigs = serviceConfig->sessionConfigs;
-			this->sessionCookie = serviceConfig->sessionCookie.c_str();
+			this->sessionCookie = serviceConfig->sessionCookie;
 		}
 
 	private:
 
 		vector< SessionConfig * > *sessionConfigs;
-		const char *sessionCookie;
+		string sessionCookie;
 
 	friend class L7LBService;
 };
@@ -75,29 +75,92 @@ class L7LBService : public Service
 
 		L7LBServiceContext *context;
 
+		map< string, string > stickySessions;
+
 		Session *getSession( int clientSocket, SSL *clientSSL )
 		{
+			const char *httpHeaderStart = "HTTP/1.1 200 OK\r\n";
+			const char *httpCookieDelimiter = ":";
+			const char *httpCookieEnd = "\r\n";
+			const char *httpHeaderEnd = "\r\n";
+
+			if( !context->sessionCookie.empty() )
+			{
+# if TRACE
+				Log::console( "sessionCookie=%s", context->sessionCookie.c_str() );
+# endif // TRACE
+ 				char buf[ 1024 ];
+ 				bzero( buf, sizeof( buf ) );
+ 				int peeked = context->service->peek( clientSocket, clientSSL, buf, sizeof( buf ) );
+				if( peeked == sizeof( buf ) )
+					Exception::raise( "L7LBService::getSession: HTTP header length exceeds static buffer length (%d)", sizeof( buf ) );
+				if( peeked == 0 ) 
+					return( nullptr );
+
+				char lineBuf[ 1024 ];
+				char *line = buf + 17;
+				char *newline;
+				map< string, string * > httpCookies;
+
+				while( (newline = strstr( line, httpCookieEnd )) )
+				{
+					if( strncmp( line, httpHeaderEnd, strlen( httpHeaderEnd ) ) == 0 )
+						break;
+					bzero( lineBuf, sizeof( lineBuf ) );
+					memcpy( lineBuf, line, newline - line );
+					char *c1;
+					for( c1 = lineBuf; *c1 && isspace( *c1 ); c1++ );
+					char *c2;
+					for( c2 = c1; strncmp( c2, httpCookieDelimiter, strlen( httpCookieDelimiter ) ) != 0 && strstr( c2, httpCookieEnd ) != c2; c2++ );
+					if( strncmp( c2, httpCookieDelimiter, strlen( httpCookieDelimiter ) ) == 0 )
+					{
+						*c2++ = '\0';
+						string name(c1);
+						while( isspace( *c2 ) )
+							++c2;
+						string value( c2 );
+						httpCookies[ name ] = &value;
+					}
+					line = newline + 2;
+				}
+# if TRACE
+				// Log::console( "httpCookies.size()=%d", httpCookies.size() );
+				// for( auto const& [name, value] : httpCookies )
+				// 	Log::console( "%s: %s", name.c_str(), value.c_str() );
+# endif // TRACE
+# if TRACE
+				string *sessionCookieValue = httpCookies[ context->sessionCookie ];
+				if( sessionCookieValue == nullptr )
+					Log::console( "%s NOT FOUND", context->sessionCookie.c_str() );
+# endif // TRACE
+			}
+
 			L7LBServiceContext *_context = (L7LBServiceContext *) context;
 			vector<SessionConfig *> sessionConfigs = *_context->sessionConfigs;
 			int sessionIndex = 0;	// use first session configuration if multiple specified for now
 			SessionConfig sessionConfig = *sessionConfigs[ sessionIndex ];
 			const char *destStr = sessionConfig.destStr;
-			bool secure = sessionConfig.secure;
+			bool useTLS = sessionConfig.useTLS;
 			ProxySessionContext *context = new ProxySessionContext(
 				this,
 				clientSocket,
 				clientSSL,
 				destStr,
-				secure,
-				this->context->sessionCookie
+				useTLS,
+				this->context->sessionCookie,
+				httpHeaderStart,
+				httpCookieDelimiter,
+				httpCookieEnd,
+				httpHeaderEnd
 			);
 			return( new ProxySession( context ) );
 		}
 
-		void notifySessionProtocolAttribute( string *value )
+		void notifySessionProtocolAttribute( string *value, void *data )
 		{
 			// assume single session-cookie for now 
-			Log::log( "notifyProxyProtocolAttribute( \"%s\" )", value->c_str() );
+			const char *destStr = (const char *) data;
+			Log::console( "notifyProxyProtocolAttribute( \"%s\" ) destStr=%s", value->c_str(), destStr );
 		}
 };
 
@@ -116,7 +179,7 @@ int main( int argc, char **argv )
 	}
 	catch( const char *error )
 	{
-		Log::log( "%s", error );
+		Log::console( "%s", error );
 		::exit( -1 );
 	}
 
@@ -140,7 +203,7 @@ int main( int argc, char **argv )
 		}
 		catch( const char *error )
 		{
-			Log::log( "%s", error ); 
+			Log::console( "%s", error ); 
 			exit( -1 );
 		}
 	}	

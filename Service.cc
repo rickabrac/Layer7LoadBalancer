@@ -24,13 +24,14 @@
 # include <openssl/err.h>
 # include <poll.h>
 # include <fcntl.h>
+# include <unistd.h>
 
 // # define TRACE    1
 
 ServiceContext :: ServiceContext( const char *listenStr, const char *certPath, const char *keyPath, const char *trustPath )
 {
 # if TRACE
-	Log::log( "ServiceContext::ServiceContext()" );
+	Log::console( "ServiceContext::ServiceContext()" );
 # endif // TRACE
 	this->sockAddr = new SocketAddress( listenStr );
 	this->certPath = certPath;
@@ -42,7 +43,7 @@ ServiceContext :: ServiceContext( const char *listenStr, const char *certPath, c
 ServiceContext :: ~ServiceContext()
 {
 # if TRACE
-	Log::log( "ServiceContext::~ServiceContext()" );
+	Log::console( "ServiceContext::~ServiceContext()" );
 # endif // TRACE
 	if( sockAddr )
 		delete( sockAddr );
@@ -96,7 +97,7 @@ set< SessionContext * > Service :: sslSessions;
 Service :: Service( ServiceContext *context ) : Thread( context )
 {
 # if TRACE
-	Log::log( "Service::Service()" );
+	Log::console( "Service::Service()" );
 # endif // TRACE
 	this->context = context;
 	context->service = this;
@@ -149,7 +150,7 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 Service :: ~Service()
 {
 # if TRACE
-	Log::log( "Service::~Service()" );
+	Log::console( "Service::~Service()" );
 # endif // TRACE
 	if( context->socket > -1 )
 		(void) close( context->socket );
@@ -162,9 +163,9 @@ Service :: isSecure()
 }
 
 void
-Service :: notifySessionProtocolAttribute( string *value )
+Service :: notifySessionProtocolAttribute( string *value, void *data )
 {
-	if( value ) return;
+	if( value || data ) return;	// suppress compiler warning
 	return;
 }
 
@@ -186,10 +187,29 @@ Service :: notifyEndOfSession( SessionContext *context )
 	Service::ssl_ctx_mutex.unlock();
 }
 
+ssize_t
+Service :: peek( int socket, SSL *ssl, void *buf, size_t len )
+{
+	fd_set fdset;
+	fd_set empty_fdset;
+	FD_ZERO( &fdset );
+	FD_SET( socket, &fdset );
+	FD_ZERO( &empty_fdset );
+	struct timeval timeout;
+	bzero( &timeout, sizeof( timeout ) );
+	timeout.tv_sec = 0; 
+	timeout.tv_usec = 100000;
+	if( select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout ) < 0 )
+		return( 0 ); 
+    if( ssl ) 
+        return( SSL_peek( ssl, buf, (int) len ) );
+    return( recv( socket, buf, len, MSG_PEEK ) );
+}
+
 void Service :: _main( ServiceContext *context )
 {
 # if TRACE
-	Log::log( "Service::_main()" );
+	Log::console( "Service::_main()" );
 # endif // TRACE
 
 	for( ;; )
@@ -197,7 +217,7 @@ void Service :: _main( ServiceContext *context )
 		try
 		{
 # if TRACE
-			Log::log( "Service::_main: accept()..." );
+			Log::console( "Service::_main: accept()..." );
 # endif // TRACE
 			int clientSocket;
 			socklen_t socklen = sizeof( struct sockaddr_in );
@@ -207,7 +227,7 @@ void Service :: _main( ServiceContext *context )
 				Exception::raise( "accept() failed (%s) [%d]", strerror( errno ), errno );
 			}
 # if TRACE
-			Log::log( "Service::_main: accept() (clientSocket=%d)", clientSocket );
+			Log::console( "Service::_main: accept() (clientSocket=%d)", clientSocket );
 # endif // TRACE
 
 			struct pollfd server_poll;
@@ -217,7 +237,6 @@ void Service :: _main( ServiceContext *context )
 
 			if( context->service->isSecure() )
 			{
-
 				Service::ssl_ctx_mutex.lock();
 
 				if( !Service::ssl_ctx )
@@ -226,7 +245,7 @@ void Service :: _main( ServiceContext *context )
 				if( (clientSSL = SSL_new( Service::ssl_ctx )) == NULL )
 					Exception::raise( "SSL_new() failed (%s)", ERR_error_string( ERR_get_error(), NULL ) );
 # if TRACE
-				Log::log( "Service::_main: clientSocket=%d clientSSL=<%p>", clientSocket, clientSSL );
+				Log::console( "Service::_main: clientSocket=%d clientSSL=<%p>", clientSocket, clientSSL );
 # endif // TRACE
 				Service::ssl_ctx_mutex.unlock();
 
@@ -249,13 +268,18 @@ void Service :: _main( ServiceContext *context )
 					Exception::raise( "SSL_accept() == 0" );
 			}
 # if TRACE
-			Log::log( "Service::_main: CALLING getSession( %d, <%p> )", clientSocket, clientSSL );
+			Log::console( "Service::_main: CALLING getSession( %d, <%p> )", clientSocket, clientSSL );
 # endif // TRACE
 
 			Session *session = context->service->getSession( clientSocket, clientSSL );
 
 			if( !session )
-				Exception::raise( "getSession() failed" );
+			{
+				if( context->service->isSecure() )
+					SSL_shutdown( clientSSL );
+				(void) close( clientSocket );
+				continue;
+			}
 
 			if( context->service->isSecure() )
 			{
@@ -274,3 +298,4 @@ void Service :: _main( ServiceContext *context )
 		}
 	}
 }
+

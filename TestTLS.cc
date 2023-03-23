@@ -37,7 +37,7 @@ class ProxyServiceContext : public ServiceContext
 			ServiceContext( listenStr, certFile, keyFile )
 		{
 # if TRACE
-			Log::log( "TestProxyServiceContext::TestProxyServiceContext()" );
+			Log::console( "TestProxyServiceContext::TestProxyServiceContext()" );
 # endif // TRACE
 			this->destStr = destStr;
 		}
@@ -92,7 +92,7 @@ class EchoSession : public Session
 		static void _main ( EchoSessionContext *context )
 		{
 # if TRACE
-			Log::log( "EchoSession::_main( %p ) RUN", context );
+			Log::console( "EchoSession::_main( %p ) RUN", context );
 # endif // TRACE
 			try
 			{
@@ -126,7 +126,7 @@ class EchoSession : public Session
 								context->buf[ context->len - 1 ] = '\0';
 # if TRACE
 								if( strlen( context->buf ) )
-									Log::log( "EchoSession::main( %p ) ECHO \"%s\"", context, context->buf );
+									Log::console( "EchoSession::main( %p ) ECHO \"%s\"", context, context->buf );
 # endif // TRACE
 								// send back to client
 								ssize_t sent, total = 0;
@@ -143,18 +143,18 @@ class EchoSession : public Session
 								}
 
 # if TRACE
-								Log::log( "EchoSession::main( %p ) SENT \"%s\"", context, context->buf );
+								Log::console( "EchoSession::main( %p ) SENT \"%s\"", context, context->buf );
 # endif // TRACE
 								if( sent == 0 )
 								{
-									Log::log( "EchoSession[ %p ]._main: SSL_write() FAILED? (%s)",
+									Log::console( "EchoSession[ %p ]._main: SSL_write() FAILED? (%s)",
 										context, ERR_error_string( ERR_get_error(), NULL ) );
 								}
 							}
 							else if( context->len < 0 )
 							{
 # if TRACE
-								Log::log( "EchoSession[ %p ]::_main: EXIT", context);
+								Log::console( "EchoSession[ %p ]::_main: EXIT", context);
 # endif // TRACE
 								return;
 							}
@@ -162,7 +162,7 @@ class EchoSession : public Session
 					}
 					else
 					{
-						Log::log( "EchoSession[ %p ]::_main: select() < 0", context ); 
+						Log::console( "EchoSession[ %p ]::_main: select() < 0", context ); 
 						return;
 					}
 				}
@@ -170,7 +170,7 @@ class EchoSession : public Session
 			catch( const char *msg )
 			{
 				// exception skips to terminate session below
-				Log::log( "EchoSession[ %p ]::_main: %s", context, msg );
+				Log::console( "EchoSession[ %p ]::_main: %s", context, msg );
 			}
 		}
 };
@@ -227,7 +227,7 @@ class TestSession : public Thread
 		virtual ~TestSession()
 		{
 # if TRACE
-			Log::log( "TestSession::~TestSession()" );
+			Log::console( "TestSession::~TestSession()" );
 # endif // TRACE
 			delete( context );
 		}
@@ -241,7 +241,7 @@ class TestSession : public Thread
 			{
 				context->session->sleep( rand() % 1000 );
 # if TRACE
-				Log::log( "TestSession::main( %p ) RUN", context );
+				Log::console( "TestSession::main( %p ) RUN", context );
 # endif // TRACE
 				connection = new Connection( "localhost:666" );
 				int i;
@@ -271,7 +271,7 @@ class TestSession : public Thread
 				}
 				delete( connection );
 				++TestSession::finished;
-				Log::log( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
+				Log::console( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
 					context, i, TestSession::finished );
 				context->session->stop();
 			}
@@ -279,7 +279,7 @@ class TestSession : public Thread
 			{
 				if( connection )
 					delete( connection );
-				Log::log( "TestSession[ %p ]::_main: %s", context, error );
+				Log::console( "TestSession[ %p ]::_main: %s", context, error );
 				::exit( -1 );
 			}
 		}
@@ -353,9 +353,9 @@ main( int argc, char **argv )
 	}
 	catch( const char *error )
 	{
-		Log::log( "%s: test failed [%s]", argv[ 0 ], error ); 
+		Log::console( "%s: test failed [%s]", argv[ 0 ], error ); 
 		exit( -1 );
 	}
-	Log::log( "%s: test passed", argv[ 0 ] );
+	Log::console( "%s: test passed", argv[ 0 ] );
 }
 
