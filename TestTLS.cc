@@ -3,20 +3,9 @@
 //  Layer7LoadBalancer
 //  Created by Rick Tyler
 //
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License You may obtain a copy of the License at
-//
-//  https://www.apache.org/licenses/LICENSE-2.0
-//
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
-//
-//
 //  TLS-mode test for Service, Connection, Session, and ProxySession.
 //
+//  SPDX-License-Identifier: MIT
 
 # include "Service.h"
 # include "ProxySession.h"
@@ -31,173 +20,173 @@ using namespace std;
 
 class ProxyServiceContext : public ServiceContext 
 {
-	public:
+    public:
 
-		ProxyServiceContext( const char *listenStr, const char *destStr, const char *certFile, const char *keyFile ) :
-			ServiceContext( listenStr, certFile, keyFile )
-		{
+	ProxyServiceContext( const char *listenStr, const char *destStr, const char *certFile, const char *keyFile ) :
+		ServiceContext( listenStr, certFile, keyFile )
+	{
 # if TRACE
-			Log::console( "TestProxyServiceContext::TestProxyServiceContext()" );
+		Log::console( "TestProxyServiceContext::TestProxyServiceContext()" );
 # endif // TRACE
-			this->destStr = destStr;
-		}
+		this->destStr = destStr;
+	}
 
-	private:
+    private:
 
-		const char *destStr;
+	const char *destStr;
 };
 
 class ProxyService : public Service 
 {
-	public:
+    public:
 
-		ProxyService( ServiceContext *context ) : Service( context ) { }
+	ProxyService( ServiceContext *context ) : Service( context ) { }
 
-		ThreadMain main( void ) { return( (ThreadMain) _main ); }
+	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
-	protected:
+    protected:
 
-		ProxySession *getSession( int clientSocket, SSL *clientSSL )
-		{
-			ProxySessionContext *context = new ProxySessionContext( this, clientSocket, clientSSL, "localhost:667", true );
-			return( new ProxySession( context ) );
-		}
+	ProxySession *getSession( int clientSocket, SSL *clientSSL )
+	{
+		ProxySessionContext *context = new ProxySessionContext( this, clientSocket, clientSSL, "localhost:667", true );
+		return( new ProxySession( context ) );
+	}
 };
 
 class EchoSessionContext : public SessionContext 
 {
-	public:
+    public:
 
-		EchoSessionContext( Service *service, int clientSocket, SSL *clientSSL )
-			: SessionContext( service, clientSocket, clientSSL ) { }
+	EchoSessionContext( Service *service, int clientSocket, SSL *clientSSL )
+		: SessionContext( service, clientSocket, clientSSL ) { }
 
-	private:
+    private:
 
-		char buf[ 1024 ];
-		int len;
+	char buf[ 1024 ];
+	int len;
 
-	friend class EchoSession;
+    friend class EchoSession;
 };
 
 // echo received data back to client 
 
 class EchoSession : public Session 
 {
-	public:
+    public:
 
-		EchoSession( EchoSessionContext *context ) : Session( context ) { }
+	EchoSession( EchoSessionContext *context ) : Session( context ) { }
 
-		ThreadMain main( void ) { return( (ThreadMain) _main ); }
+	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
-		static void _main ( EchoSessionContext *context )
+	static void _main ( EchoSessionContext *context )
+	{
+# if TRACE
+		Log::console( "EchoSession::_main( %p ) RUN", context );
+# endif // TRACE
+		try
 		{
-# if TRACE
-			Log::console( "EchoSession::_main( %p ) RUN", context );
-# endif // TRACE
-			try
+			fd_set fdset;
+			fd_set empty_fdset;
+			struct timeval timeout;
+			bzero( (void *) &timeout, (size_t) sizeof( timeout ) );
+			timeout.tv_sec = 1;
+			timeout.tv_usec = 0; 
+			int selected;
+			context->len = 0;
+			
+			(void) SSL_write( context->clientSSL, "", 0 ); 
+
+			for( ;; )
 			{
-				fd_set fdset;
-				fd_set empty_fdset;
-				struct timeval timeout;
-				bzero( (void *) &timeout, (size_t) sizeof( timeout ) );
-				timeout.tv_sec = 1;
-				timeout.tv_usec = 0; 
-				int selected;
-				context->len = 0;
-				
-				(void) SSL_write( context->clientSSL, "", 0 ); 
+				FD_ZERO( &fdset );
+				FD_ZERO( &empty_fdset );
+				FD_SET( context->clientSocket, &fdset );
 
-				for( ;; )
+				if( (selected = select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout)) >= 0 )
 				{
-					FD_ZERO( &fdset );
-					FD_ZERO( &empty_fdset );
-					FD_SET( context->clientSocket, &fdset );
-
-					if( (selected = select( FD_SETSIZE, &fdset, &empty_fdset, &empty_fdset, &timeout)) >= 0 )
+					if( FD_ISSET( context->clientSocket, &fdset ) )
 					{
-						if( FD_ISSET( context->clientSocket, &fdset ) )
+						// client has data ready
+						bzero( context->buf, sizeof( context->buf ) );
+
+						if( (context->len = (int) SSL_read( context->clientSSL,
+							context->buf, sizeof( context->buf ) )) > 0 )
 						{
-							// client has data ready
-							bzero( context->buf, sizeof( context->buf ) );
-
-							if( (context->len = (int) SSL_read( context->clientSSL,
-								context->buf, sizeof( context->buf ) )) > 0 )
+							context->buf[ context->len - 1 ] = '\0';
+# if TRACE
+							if( strlen( context->buf ) )
+								Log::console( "EchoSession::main( %p ) ECHO \"%s\"", context, context->buf );
+# endif // TRACE
+							// send back to client
+							ssize_t sent, total = 0;
+							while( (sent = SSL_write( context->clientSSL, ((char *) context->buf) + total, context->len )) < context->len )
 							{
-								context->buf[ context->len - 1 ] = '\0';
-# if TRACE
-								if( strlen( context->buf ) )
-									Log::console( "EchoSession::main( %p ) ECHO \"%s\"", context, context->buf );
-# endif // TRACE
-								// send back to client
-								ssize_t sent, total = 0;
-								while( (sent = SSL_write( context->clientSSL, ((char *) context->buf) + total, context->len )) < context->len )
+								if( sent < 0 )
 								{
-									if( sent < 0 )
-									{
-										printf( "EchoSession[ %p ]::_main: SSL_write() failed [%d] (%s)",
-											context, errno, strerror( errno ) );
-										return;
-									}
-									context->len -= sent;
-									total += sent;
+									printf( "EchoSession[ %p ]::_main: SSL_write() failed [%d] (%s)",
+										context, errno, strerror( errno ) );
+									return;
 								}
-
-# if TRACE
-								Log::console( "EchoSession::main( %p ) SENT \"%s\"", context, context->buf );
-# endif // TRACE
-								if( sent == 0 )
-								{
-									Log::console( "EchoSession[ %p ]._main: SSL_write() FAILED? (%s)",
-										context, ERR_error_string( ERR_get_error(), NULL ) );
-								}
+								context->len -= sent;
+								total += sent;
 							}
-							else if( context->len < 0 )
-							{
+
 # if TRACE
-								Log::console( "EchoSession[ %p ]::_main: EXIT", context);
+							Log::console( "EchoSession::main( %p ) SENT \"%s\"", context, context->buf );
 # endif // TRACE
-								return;
+							if( sent == 0 )
+							{
+								Log::console( "EchoSession[ %p ]._main: SSL_write() FAILED? (%s)",
+									context, ERR_error_string( ERR_get_error(), NULL ) );
 							}
 						}
-					}
-					else
-					{
-						Log::console( "EchoSession[ %p ]::_main: select() < 0", context ); 
-						return;
+						else if( context->len < 0 )
+						{
+# if TRACE
+							Log::console( "EchoSession[ %p ]::_main: EXIT", context);
+# endif // TRACE
+							return;
+						}
 					}
 				}
-			}
-			catch( const char *msg )
-			{
-				// exception skips to terminate session below
-				Log::console( "EchoSession[ %p ]::_main: %s", context, msg );
+				else
+				{
+					Log::console( "EchoSession[ %p ]::_main: select() < 0", context ); 
+					return;
+				}
 			}
 		}
+		catch( const char *msg )
+		{
+			// exception skips to terminate session below
+			Log::console( "EchoSession[ %p ]::_main: %s", context, msg );
+		}
+	}
 };
 
 class EchoServiceContext : public ServiceContext
 {
-	public:
+    public:
 
-		EchoServiceContext( const char *listenStr, const char *certFile, const char *keyFile )
-			: ServiceContext( listenStr, certFile, keyFile ) { }
+	EchoServiceContext( const char *listenStr, const char *certFile, const char *keyFile )
+		: ServiceContext( listenStr, certFile, keyFile ) { }
 };
 
 class EchoService : public Service
 {
-	public:
+    public:
 
-		EchoService( EchoServiceContext *context ) : Service( context ) { }
+	EchoService( EchoServiceContext *context ) : Service( context ) { }
 
-		ThreadMain main( void ) { return( (ThreadMain) _main ); }
+	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
-	protected:
+    protected:
 
-		Session *getSession( int clientSocket, SSL *clientSSL )
-		{
-			EchoSessionContext *context = new EchoSessionContext( this, clientSocket, clientSSL );
-			return( new EchoSession( context ) );
-		}
+	Session *getSession( int clientSocket, SSL *clientSSL )
+	{
+		EchoSessionContext *context = new EchoSessionContext( this, clientSocket, clientSSL );
+		return( new EchoSession( context ) );
+	}
 };
 
 class TestSession;
@@ -206,7 +195,7 @@ class TestSessionContext : public ThreadContext
 {
 	public:
 
-		TestSessionContext( int numEchos )
+	TestSessionContext( int numEchos )
 	{
 		this->numEchos = numEchos;
 	}
@@ -217,96 +206,96 @@ class TestSessionContext : public ThreadContext
 
 class TestSession : public Thread 
 {
-	public:
+    public:
 
-		TestSession( TestSessionContext *context ) : Thread( context )
-		{
-			context->session = this;
-		}
+	TestSession( TestSessionContext *context ) : Thread( context )
+	{
+		context->session = this;
+	}
 
-		virtual ~TestSession()
-		{
+	virtual ~TestSession()
+	{
 # if TRACE
-			Log::console( "TestSession::~TestSession()" );
+		Log::console( "TestSession::~TestSession()" );
 # endif // TRACE
-			delete( context );
-		}
+		delete( context );
+	}
 
-		ThreadMain main( void ) { return( (ThreadMain) _main ); }
+	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
-		static void _main( TestSessionContext *context )
+	static void _main( TestSessionContext *context )
+	{
+		Connection *connection = NULL;
+		try
 		{
-			Connection *connection = NULL;
-			try
-			{
-				context->session->sleep( rand() % 1000 );
+			context->session->sleep( rand() % 1000 );
 # if TRACE
-				Log::console( "TestSession::main( %p ) RUN", context );
+			Log::console( "TestSession::main( %p ) RUN", context );
 # endif // TRACE
-				connection = new Connection( "localhost:666" );
-				int i;
-				TestSession::sessionMutex.lock();
-				char sessionIdBuf[ 32 ];
-				sprintf( sessionIdBuf, "%p", context->session );
-				string sessionId( sessionIdBuf );
-				TestSession::sessions[ sessionId ] = context->session;
-				TestSession::sessionMutex.unlock();
-				for( i = 0; i < context->numEchos; i++ )
-				{
-					context->session->sleep( rand() % 250 );
-					char outBuf[ 128 ];
-					sprintf( outBuf, "TEST#%d", i );
-					connection->write( outBuf, strlen( outBuf ) + 1 );
-					char inBuf[ 128 ];
-					bzero( inBuf, sizeof( inBuf ) );
-					int n;
-					size_t total = 0;
-					while( (n = connection->read( inBuf + total, sizeof( inBuf ) )) > 0 
-						&& inBuf[ total - 1 ] != '\0' )
-					{
-						total += n;	
-					}
-					if( total && strcmp( inBuf, outBuf ) != 0 ) 
-						Exception::raise( "test failed (input mismatch)" ); 
-				}
-				delete( connection );
-				++TestSession::finished;
-				Log::console( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
-					context, i, TestSession::finished );
-				context->session->stop();
-			}
-			catch( const char *error )
-			{
-				if( connection )
-					delete( connection );
-				Log::console( "TestSession[ %p ]::_main: %s", context, error );
-				::exit( -1 );
-			}
-		}
-
-		void stop( void )
-		{
+			connection = new Connection( "localhost:666" );
+			int i;
 			TestSession::sessionMutex.lock();
 			char sessionIdBuf[ 32 ];
-			sprintf( sessionIdBuf, "%p", this );
+			sprintf( sessionIdBuf, "%p", context->session );
 			string sessionId( sessionIdBuf );
-			if( TestSession::sessions.erase( sessionId ) == 0 )
-			{
-				TestSession::sessionMutex.unlock();
-				Exception::raise( "sessions.erase( %s ) failed", sessionId.c_str() );
-			}
-			if( TestSession::sessions.size() == 0 )
-				TestSession::done.signal();
+			TestSession::sessions[ sessionId ] = context->session;
 			TestSession::sessionMutex.unlock();
+			for( i = 0; i < context->numEchos; i++ )
+			{
+				context->session->sleep( rand() % 250 );
+				char outBuf[ 128 ];
+				sprintf( outBuf, "TEST#%d", i );
+				connection->write( outBuf, strlen( outBuf ) + 1 );
+				char inBuf[ 128 ];
+				bzero( inBuf, sizeof( inBuf ) );
+				int n;
+				size_t total = 0;
+				while( (n = connection->read( inBuf + total, sizeof( inBuf ) )) > 0 
+					&& inBuf[ total - 1 ] != '\0' )
+				{
+					total += n;	
+				}
+				if( total && strcmp( inBuf, outBuf ) != 0 ) 
+					Exception::raise( "test failed (input mismatch)" ); 
+			}
+			delete( connection );
+			++TestSession::finished;
+			Log::console( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
+				context, i, TestSession::finished );
+			context->session->stop();
 		}
+		catch( const char *error )
+		{
+			if( connection )
+				delete( connection );
+			Log::console( "TestSession[ %p ]::_main: %s", context, error );
+			::exit( -1 );
+		}
+	}
 
-		static Event done;
-		static size_t finished;
+	void stop( void )
+	{
+		TestSession::sessionMutex.lock();
+		char sessionIdBuf[ 32 ];
+		sprintf( sessionIdBuf, "%p", this );
+		string sessionId( sessionIdBuf );
+		if( TestSession::sessions.erase( sessionId ) == 0 )
+		{
+			TestSession::sessionMutex.unlock();
+			Exception::raise( "sessions.erase( %s ) failed", sessionId.c_str() );
+		}
+		if( TestSession::sessions.size() == 0 )
+			TestSession::done.signal();
+		TestSession::sessionMutex.unlock();
+	}
 
-	private:
+	static Event done;
+	static size_t finished;
 
-		static map< std::string, TestSession * > sessions;
-		static mutex sessionMutex;
+    private:
+
+	static map< std::string, TestSession * > sessions;
+	static mutex sessionMutex;
 };
 
 map< std::string, TestSession * > TestSession :: sessions;

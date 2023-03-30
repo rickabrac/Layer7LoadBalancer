@@ -40,17 +40,15 @@ SessionContext :: ~SessionContext()
 # if TRACE
 	Log::console( "SessionContext::~SessionContext()" );
 # endif // TRACE
-	if( service->isSecure() && clientSSL )
-	{
+	if( service->isSecure() && clientSSL ) {
 		SSL_shutdown( clientSSL );
 		SSL_free( clientSSL );
 	}
+
 	if( clientSocket != -1  )
-	{
 		(void) close( clientSocket );
-	}
-	if( session )
-	{
+
+	if( session ) {
 		service->endSession( this );
 		delete( session );
 	}
