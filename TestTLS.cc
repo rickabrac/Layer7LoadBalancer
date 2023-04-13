@@ -41,13 +41,11 @@ class ProxyService : public Service
     public:
 
 	ProxyService( ServiceContext *context ) : Service( context ) { }
-
 	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
     protected:
 
-	ProxySession *getSession( int clientSocket, SSL *clientSSL )
-	{
+	ProxySession *getSession( int clientSocket, SSL *clientSSL ) {
 		ProxySessionContext *context = new ProxySessionContext( this, clientSocket, clientSSL, "localhost:667", true );
 		return( new ProxySession( context ) );
 	}
@@ -75,7 +73,6 @@ class EchoSession : public Session
     public:
 
 	EchoSession( EchoSessionContext *context ) : Session( context ) { }
-
 	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 	static void _main ( EchoSessionContext *context )
@@ -156,8 +153,7 @@ class EchoSession : public Session
 				}
 			}
 		}
-		catch( const char *msg )
-		{
+		catch( const char *msg ) {
 			// exception skips to terminate session below
 			Log::console( "EchoSession[ %p ]::_main: %s", context, msg );
 		}
@@ -177,7 +173,6 @@ class EchoService : public Service
     public:
 
 	EchoService( EchoServiceContext *context ) : Service( context ) { }
-
 	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
     protected:
@@ -195,8 +190,7 @@ class TestSessionContext : public ThreadContext
 {
 	public:
 
-	TestSessionContext( int numEchos )
-	{
+	TestSessionContext( int numEchos ) {
 		this->numEchos = numEchos;
 	}
 
@@ -208,13 +202,11 @@ class TestSession : public Thread
 {
     public:
 
-	TestSession( TestSessionContext *context ) : Thread( context )
-	{
+	TestSession( TestSessionContext *context ) : Thread( context ) {
 		context->session = this;
 	}
 
-	virtual ~TestSession()
-	{
+	virtual ~TestSession() {
 # if TRACE
 		Log::console( "TestSession::~TestSession()" );
 # endif // TRACE
@@ -260,12 +252,11 @@ class TestSession : public Thread
 			}
 			delete( connection );
 			++TestSession::finished;
-			Log::console( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
+			Log::console( "TestSession[ %p ]::_main: %d strings echoed [session #%d].",
 				context, i, TestSession::finished );
 			context->session->stop();
 		}
-		catch( const char *error )
-		{
+		catch( const char *error ) {
 			if( connection )
 				delete( connection );
 			Log::console( "TestSession[ %p ]::_main: %s", context, error );
@@ -279,8 +270,7 @@ class TestSession : public Thread
 		char sessionIdBuf[ 32 ];
 		sprintf( sessionIdBuf, "%p", this );
 		string sessionId( sessionIdBuf );
-		if( TestSession::sessions.erase( sessionId ) == 0 )
-		{
+		if( TestSession::sessions.erase( sessionId ) == 0 ) {
 			TestSession::sessionMutex.unlock();
 			Exception::raise( "sessions.erase( %s ) failed", sessionId.c_str() );
 		}
@@ -330,8 +320,7 @@ main( int argc, char **argv )
 		// launch echo sessions
 		int numSessions = atoi( argv[ 1 ] );
 		int numEchos = atoi( argv[ 2 ] );
-		for( int i = 0; i < numSessions; i++ )
-		{
+		for( int i = 0; i < numSessions; i++ ) {
 			TestSessionContext *context = new TestSessionContext( numEchos );
 			TestSession *test = new TestSession( context );	
 			test->run();
@@ -340,11 +329,9 @@ main( int argc, char **argv )
 
 		TestSession::done.wait();
 	}
-	catch( const char *error )
-	{
+	catch( const char *error ) {
 		Log::console( "%s: test failed [%s]", argv[ 0 ], error ); 
 		exit( -1 );
 	}
 	Log::console( "%s: test passed", argv[ 0 ] );
 }
-

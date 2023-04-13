@@ -22,7 +22,6 @@ class ThreadContext
     public:
 
 	ThreadContext( void ) { }
-
 	~ThreadContext() { }
 };
 
@@ -54,8 +53,7 @@ class Thread
 		t->detach();
 	}
 
-	void sleep( int millliseconds )
-	{
+	void sleep( int millliseconds ) {
 		std::chrono::duration<int64_t, std::ratio<1,1000>> duration( millliseconds );
 		std::this_thread::sleep_for( duration );
 	}

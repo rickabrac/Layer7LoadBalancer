@@ -38,13 +38,11 @@ class ProxyService : public Service
     public:
 
 	ProxyService( ServiceContext *context ) : Service( context ) { }
-
 	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
     protected:
 
-	ProxySession *getSession( int clientSocket, SSL *clientSSL = NULL )
-	{
+	ProxySession *getSession( int clientSocket, SSL *clientSSL = NULL ) {
 		ProxySessionContext *context = new ProxySessionContext( this, clientSocket, clientSSL, "localhost:667", false );
 		return( new ProxySession( context ) );
 	}
@@ -70,7 +68,6 @@ class EchoSession : public Session
     public:
 
 	EchoSession( EchoSessionContext *context ) : Session( context ) { }
-
 	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
 	static void _main ( EchoSessionContext *context )
@@ -150,8 +147,7 @@ class EchoSession : public Session
 				}
 			}
 		}
-		catch( const char *msg )
-		{
+		catch( const char *msg ) {
 			// exception skips to terminate session below
 			Log::console( "EchoSession[ %p ]::_main: %s", context, msg );
 		}
@@ -174,7 +170,6 @@ class EchoService : public Service
     public:
 
 	EchoService( EchoServiceContext *context ) : Service( context ) { }
-
 	ThreadMain main( void ) { return( (ThreadMain) _main ); }
 
     protected:
@@ -207,13 +202,11 @@ class TestSession : public Thread
 {
     public:
 
-	TestSession( TestSessionContext *context ) : Thread( context )
-	{
+	TestSession( TestSessionContext *context ) : Thread( context ) {
 		context->session = this;
 	}
 
-	virtual ~TestSession()
-	{
+	virtual ~TestSession() {
 		Log::console( "TestSession::~TestSession()" );
 		delete( context );
 	}
@@ -256,7 +249,7 @@ class TestSession : public Thread
 			}
 			delete( connection );
 			++TestSession::finished;
-			Log::console( "TestSession[ %p ]::_main: %d strings verified [session #%d].",
+			Log::console( "TestSession[ %p ]::_main: %d strings echoed [session #%d].",
 				context, i, TestSession::finished );
 			context->session->stop();
 		}
@@ -333,11 +326,9 @@ main( int argc, char **argv )
 		}
 		TestSession::done.wait();
 	}
-	catch( const char *error )
-	{
+	catch( const char *error ) {
 		Log::console( "%s: test failed [%s]", argv[ 0 ], error ); 
 		exit( -1 );
 	}
 	Log::console( "%s: test passed", argv[ 0 ] );
 }
-
