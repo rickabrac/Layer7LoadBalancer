@@ -26,7 +26,8 @@ ProxySessionContext :: ProxySessionContext
 	const char *protocolAttributeDelimeter,
 	const char *protocolAttributeEnd,
 	const char *protocolHeaderEnd
-) : SessionContext( service, clientSocket, clientSSL )
+)
+: SessionContext( service, clientSocket, clientSSL )
 {
 
 # if TRACE
@@ -98,8 +99,7 @@ ProxySession :: _main( ProxySessionContext *context )
 	Log::console( "ProxySession::_main[ %p ] RUN", context );
 # endif // TRACE
 
-	try
-	{
+	try {
 		context->proxy = new Connection( context->destStr, context->useTLS );
 	}
 	catch( const char *error )
@@ -141,7 +141,6 @@ ProxySession :: _main( ProxySessionContext *context )
 				Log::console( "ProxySession[ %p ]::_main: select() failed (%s) [%d]", context, strerror( errno ), errno );
 # endif // TRACE
 				SSL_shutdown( context->clientSSL );
-//				SSL_free( context->clientSSL );
 				context->clientSSL = nullptr;
 				delete( context );
 				return;
@@ -150,7 +149,7 @@ ProxySession :: _main( ProxySessionContext *context )
 			if( selected == 0 )
 			{
 # if TRACE
-//					Log::console( "SELECT() RETURNED selected=%d errno=%d (%s)", selected, errno, strerror( errno ) );
+//				Log::console( "SELECT() RETURNED selected=%d errno=%d (%s)", selected, errno, strerror( errno ) );
 # endif // TRACE
 				if( loops > 0 )
 				{
@@ -384,8 +383,7 @@ ProxySession :: _main( ProxySessionContext *context )
 
 			if( loopReads == 0 )
 			{
-				if( errno == 60 )
-				{
+				if( errno == 60 ) {
 # if TRACE
 					Log::console( "ProxySession[ %p ]._main: ERRNO == 60", context );
 # endif // TRACE
