@@ -15,10 +15,12 @@
 #  limitations under the License.
 #
 
-SSL_HDR_DIR = /usr/local/include
-SSL_LIB_DIR = /usr/local/lib
+# SSL_HDR_DIR = /usr/local/include
+# SSL_LIB_DIR = /usr/local/lib
+SSL_HDR_DIR = /usr/local/ssl
+SSL_LIB_DIR = /usr/lib/x86_64-linux-gnu 
 
-CXX         = g++
+CXX         = g++ // clang++
 
 CXXFLAGS    = -g -fPIC -Wuninitialized -Wall -Wextra -I$(SSL_HDR_DIR) -I. -std=c++1z
 
