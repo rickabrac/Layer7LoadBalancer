@@ -12,6 +12,9 @@
 # include <map>
 # include <mutex>
 
+# include <strings.h>
+# include <string.h>
+
 using namespace std;
 
 class SocketAddress

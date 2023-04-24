@@ -11,6 +11,8 @@
 # include "Log.h"
 # include <fcntl.h>
 
+# include <signal.h>
+
 // # define TRACE    1
 
 using namespace std;
@@ -62,8 +64,12 @@ Connection :: Connection ( const char *destStr, bool useTLS )
 		if( socket == -1 )
 			Exception::raise( "Connection::Connection( \"%s\" ) socket() failed (%s)", destStr, strerror( errno ) );
 
+# ifdef FREEBSD
 		int set = 1;
 		setsockopt( socket, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof( int ) );
+# else // FREEBSD
+		signal(SIGPIPE, SIG_IGN);
+# endif // FREEBSD
 
 		// connect operation must be asynchronous to handle failures
 		int flags;

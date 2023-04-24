@@ -23,6 +23,8 @@
 # include <map>
 # include <sys/time.h>
 
+# include <strings.h>
+
 # define _L7LBConfig_h_    1
 # include "L7LBConfig.h"
 

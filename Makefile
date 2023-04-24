@@ -20,9 +20,10 @@
 SSL_HDR_DIR = /usr/local/ssl
 SSL_LIB_DIR = /usr/lib/x86_64-linux-gnu 
 
-CXX         = g++ // clang++
+# CXX         = g++
+CXX      = clang++
 
-CXXFLAGS    = -g -fPIC -Wuninitialized -Wall -Wextra -I$(SSL_HDR_DIR) -I. -std=c++1z
+CXXFLAGS = -g -fPIC -Wuninitialized -Wall -Wextra -I$(SSL_HDR_DIR) -I. -std=c++1z
 
 SOURCES  = SocketAddress.cc Connection.cc Service.cc Session.cc ProxySession.cc
 
@@ -35,16 +36,13 @@ all: l7lb testtls testtcp # testl7lb
 $(OBJECTS): $(HEADERS)
 
 testtls: $(OBJECTS) TestTLS.cc
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto TestTLS.cc -o testtls
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto -pthread TestTLS.cc -o testtls
 
 testtcp: $(OBJECTS) TestTCP.cc
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto TestTCP.cc -o testtcp
-
-# testl7lb: $(OBJECTS) TestTCP.cc
-#	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto TestL7LB.cc -o testl7lb
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto -pthread TestTCP.cc -o testtcp
 
 l7lb: $(OBJECTS) L7LB.cc
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto L7LB.cc -o l7lb 
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto -pthread L7LB.cc -o l7lb 
 
 clean:
 	rm -f testtls testtcp l7lb *.o

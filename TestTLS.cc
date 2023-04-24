@@ -14,6 +14,8 @@
 # include "Event.h"
 # include "Log.h"
 
+# include <strings.h>
+
 // # define TRACE    1
 
 using namespace std;
