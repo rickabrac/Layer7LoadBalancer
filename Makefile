@@ -36,7 +36,6 @@ all: l7lb testtls testtcp # testl7lb
 $(OBJECTS): $(HEADERS)
 
 testtls: $(OBJECTS) TestTLS.cc
-#	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto -pthread -stdlib=libc++ TestTLS.cc -o testtls
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -L/usr/local/lib -lssl -lcrypto -pthread TestTLS.cc -o testtls
 
 testtcp: $(OBJECTS) TestTCP.cc
