@@ -118,12 +118,7 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 		if( fcntl( context->socket, F_SETFD, 1 ) == -1 )
 			Exception::raise( "fcntl( F_SETFD, 1 ) failed", strerror( errno ) );
 
-# ifdef FREEBSD
-		int set = 1;
-		setsockopt( context->socket, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof( int ) );
-# else // FREEBSD
 		signal(SIGPIPE, SIG_IGN);
-# endif // FREEBSD
 
 		// set SO_REUSEADDR so bind() doesn't fail after restart
 		int optval = 1;

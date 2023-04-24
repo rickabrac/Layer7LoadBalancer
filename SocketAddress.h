@@ -11,9 +11,14 @@
 # include <arpa/inet.h>
 # include <map>
 # include <mutex>
-
 # include <strings.h>
 # include <string.h>
+# include <sys/socket.h>
+# include <stdarg.h>
+# include <string>
+# include <stdlib.h>
+# import <netinet/in.h>
+# import <arpa/inet.h>
 
 using namespace std;
 
