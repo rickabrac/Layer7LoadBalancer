@@ -119,7 +119,9 @@ class L7LBConfig
 		}
 		catch( const char *error )
 		{
-			Exception::raise( "L7LBConfig::parseFile: %s", error ); 
+			cout << "LBL7Config.parseFile: " << error << endl;
+			::exit(-1);
+//			Exception::raise( "L7LBConfig::parseFile: %s", error ); 
 		}
 	}
 
@@ -130,7 +132,7 @@ class L7LBConfig
 		string *keyPath = nullptr;
 		string *certPath = nullptr;
 		string *trustPath = nullptr;
-		string *sessionCookie;
+		string *sessionCookie = nullptr;
 		if( (protocol = nextToken()) == nullptr )
 			return nullptr;
 		if( *protocol == "#" )
@@ -165,6 +167,10 @@ class L7LBConfig
 				const char *destStr = value->c_str();
 				bool useTLS = strcmp( name->c_str(), "TLS" ) == 0 ? true : false;
 				sessionConfigs->push_back( new SessionConfig( destStr, useTLS ) );
+			}
+			else
+			{
+				Exception::raise( "unknown parameter: %s", name->c_str() );
 			}
 		}
 # if TRACE

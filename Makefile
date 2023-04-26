@@ -15,15 +15,9 @@
 #  limitations under the License.
 #
 
-# SSL_HDR_DIR = /usr/local/include
-# SSL_LIB_DIR = /usr/local/lib
-SSL_HDR_DIR = /usr/local/ssl
-SSL_LIB_DIR = /usr/lib/x86_64-linux-gnu 
-
-# CXX         = g++
 CXX      = clang++
 
-CXXFLAGS = -g -fPIC -Wuninitialized -Wall -Wextra -I$(SSL_HDR_DIR) -I. -std=c++1z
+CXXFLAGS = -g -fPIC -Wuninitialized -Wall -Wextra -I. -std=c++1z
 
 SOURCES  = SocketAddress.cc Connection.cc Service.cc Session.cc ProxySession.cc
 
