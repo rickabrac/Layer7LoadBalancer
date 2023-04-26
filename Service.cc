@@ -115,8 +115,8 @@ Service :: Service( ServiceContext *context ) : Thread( context )
 		if( context->socket == -1 )
 			Exception::raise( "socket() failed: %s", strerror( errno ) );
 
-		if( fcntl( context->socket, F_SETFD, 1 ) == -1 )
-			Exception::raise( "fcntl( F_SETFD, 1 ) failed", strerror( errno ) );
+//		if( fcntl( context->socket, F_SETFD, 1 ) == -1 )
+//			Exception::raise( "fcntl( F_SETFD, 1 ) failed", strerror( errno ) );
 
 		signal(SIGPIPE, SIG_IGN);
 

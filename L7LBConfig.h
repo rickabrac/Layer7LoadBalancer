@@ -176,12 +176,6 @@ class L7LBConfig
 # if TRACE
 		cout << "PROTOCOL=" << *protocol << endl;
 		cout << "LISTEN=" << *listenStr << endl;
-		if( *protocol == "TLS" )
-		{
-			cout << "KEYPATH=" << *keyPath << endl;
-			cout << "CERTPATH=" << *certPath << endl;
-			cout << "TRUSTPATH=" << (trustPath == nullptr ? "?" : *trustPath) << endl;
-		}
 # endif // TRACE
 		return new ServiceConfig(
 			*listenStr,
